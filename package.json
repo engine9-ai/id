@@ -1,0 +1,59 @@
+{
+  "name": "@engine9/id",
+  "version": "0.1.0",
+  "description": "Browser client for engine9 identity: verify delegate Identity Tokens, request identity at a minimum level, and optionally talk to @engine9/core.",
+  "type": "module",
+  "license": "GPL-2.0",
+  "author": "Engine9",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "unpkg": "./dist/id.iife.js",
+  "jsdelivr": "./dist/id.iife.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./levels": {
+      "types": "./dist/levels.d.ts",
+      "import": "./dist/levels.js",
+      "default": "./dist/levels.js"
+    },
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "import": "./dist/core.js",
+      "default": "./dist/core.js"
+    }
+  },
+  "files": [
+    "dist",
+    "docs",
+    "skills",
+    "examples",
+    "LICENSE",
+    "README.md",
+    "AGENTS.md"
+  ],
+  "sideEffects": [
+    "./dist/id.iife.js",
+    "./src/iife.ts"
+  ],
+  "scripts": {
+    "build": "tsup && tsup --config tsup.iife.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "jose": "^6.1.0",
+    "jsdom": "^26.1.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

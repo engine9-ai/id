@@ -1,0 +1,61 @@
+# Agent Guide — `@engine9/id`
+
+Open-source browser client for engine9 identity. No backend, no runtime
+dependencies. Delegate (private) issues Identity Tokens; this package verifies
+them in the browser.
+
+## Canonical protocol
+
+[docs/protocol.md](./docs/protocol.md) is the wire spec. Keep it in sync with
+delegate routes (`/identity/*`, `/.well-known/*`, JWT claims). If you change
+authorize query params, callback names, or `postMessage` shape, update
+`protocol.md` in the same change.
+
+## Vocabulary
+
+Use **User**, **Site**, **Profile**, **Grant**, **UNID**, **Identity Level**,
+**Identity Token**, **Core Session**. Never “Account” or “Audience” in docs or
+APIs. The JWT claim remains `aud`.
+
+## Layout
+
+- `src/index.ts` — public ESM API (`createEngine9Id` and re-exports)
+- `src/levels.ts` — `@engine9/id/levels`
+- `src/core.ts` — `@engine9/id/core`
+- `src/verify.ts` — WebCrypto ES256 + claim checks
+- `src/iife.ts` — `window.engine9Id`
+- `docs/` — protocol and how-to
+- `skills/e9-identity-levels/` — Level 0–7 vocabulary
+- `examples/` — plain HTML, core, Astro
+
+## Commands
+
+```bash
+npm install
+npm test
+npm run typecheck
+npm run build
+```
+
+Do not start a long-lived demo server unless asked.
+
+## Tests
+
+Vitest + jsdom. `test/verify.test.ts` runs in the `node` environment so
+`crypto.subtle` is always present. Other files use jsdom; `test/setup.ts`
+polyfills SubtleCrypto when jsdom lacks it.
+
+`jose` is a **devDependency only** (sign tokens in tests). Do not add it, or
+any other runtime dependency, to the published library.
+
+## Implementation notes
+
+- Authorize / bridge / logout URLs take query param `site`, not `audience`.
+- Popup messages: `type === 'delegate-identity'` and `event.origin` must be
+  the delegate origin.
+- Clock skew on `exp` / `iat` is 60 seconds.
+- Default storage keys include `delegate_token` and `delegate_unid`.
+
+## Before finishing
+
+Run `npm test` and `npm run typecheck`. Do not git commit unless asked.

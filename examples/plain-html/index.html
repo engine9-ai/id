@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@engine9/id — plain HTML</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 40rem; }
+      button { margin-right: 0.5rem; }
+      pre { background: #f4f4f4; padding: 1rem; overflow: auto; }
+    </style>
+  </head>
+  <body>
+    <h1>engine9 identity (no core)</h1>
+    <p>Build the library first (<code>npm run build</code>), then open this file from a site origin registered with delegate.</p>
+    <p>
+      <button id="identify">Identify (popup, min level 1)</button>
+      <button id="logout">Log out locally</button>
+    </p>
+    <pre id="out">loading…</pre>
+    <script src="../../dist/id.iife.js"></script>
+    <script>
+      const { createEngine9Id, describeLevel } = engine9Id;
+      const id = createEngine9Id();
+
+      function render() {
+        const identity = id.getIdentity();
+        const level = describeLevel(id.level);
+        document.getElementById('out').textContent = JSON.stringify(
+          { level: level.name, isAnonymous: id.isAnonymous, identity },
+          null,
+          2,
+        );
+      }
+
+      id.onChange(render);
+
+      (async () => {
+        await id.handleCallback();
+        render();
+      })();
+
+      document.getElementById('identify').onclick = async () => {
+        await id.requestIdentity({ minLevel: 1, mode: 'popup' });
+        render();
+      };
+      document.getElementById('logout').onclick = () => {
+        id.logout();
+        render();
+      };
+    </script>
+  </body>
+</html>
