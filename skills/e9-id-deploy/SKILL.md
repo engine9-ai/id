@@ -9,6 +9,7 @@ description: >-
 
 # Deploy `@engine9/id` on a Site
 
+Human deploy guide (start here): [`docs/deploy.md`](../../docs/deploy.md).
 Canonical protocol: [`docs/protocol.md`](../../docs/protocol.md).
 Without-core guide: [`docs/without-core.md`](../../docs/without-core.md).
 

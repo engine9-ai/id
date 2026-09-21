@@ -60,8 +60,48 @@ export interface CoreConfig {
   publicApiKey: string;
 }
 
+/** Minimal provider surface accepted on createEngine9Id (avoids circular imports). */
+export interface Engine9IdProvider {
+  readonly id: string;
+  discover(): Promise<DelegateConfiguration>;
+  buildAuthorizeUrl(opts: {
+    site: string;
+    returnTo: string;
+    minLevel?: number;
+    maxLevel?: number;
+    fields?: string[];
+    prompt?: Prompt;
+    nonce?: string;
+    state?: string;
+    responseMode?: ResponseMode;
+  }): Promise<string> | string;
+  buildBridgeUrl?(opts: {
+    site: string;
+    minLevel?: number;
+    maxLevel?: number;
+    fields?: string[];
+    prompt?: Prompt;
+    nonce?: string;
+    state?: string;
+  }): Promise<string> | string;
+  buildLogoutUrl?(opts: {
+    site: string;
+    returnTo?: string;
+  }): Promise<string> | string;
+  messageOrigin?(config: DelegateConfiguration): string;
+  verifyToken(
+    token: string,
+    opts: { site: string; nonce?: string },
+  ): Promise<Identity>;
+}
+
 export interface Engine9IdConfig {
-  /** Delegate origin. Default `https://delegate.engine9.ai`. */
+  /**
+   * Identity provider. Default: Delegate via `createDelegateProvider`.
+   * Custom providers must return the normalized Identity shape.
+   */
+  provider?: Engine9IdProvider;
+  /** Delegate origin shortcut when using the default provider. Default `https://delegate.engine9.ai`. */
   delegateUrl?: string;
   /** This Site's origin. Default `location.origin`. JWT `aud` must match. */
   site?: string;

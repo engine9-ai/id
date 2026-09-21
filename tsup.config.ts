@@ -5,6 +5,8 @@ export default defineConfig({
     index: 'src/index.ts',
     levels: 'src/levels.ts',
     core: 'src/core.ts',
+    roles: 'src/roles.ts',
+    forms: 'src/forms.ts',
   },
   format: ['esm'],
   dts: true,

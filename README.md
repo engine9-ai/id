@@ -10,6 +10,11 @@ canonical. Vocabulary: **User**, **Site**, **Profile**, **Grant**, **UNID**,
 
 Zero runtime dependencies. WebCrypto only.
 
+**First deploy:** [docs/deploy.md](./docs/deploy.md) — add the script, allow
+your website origin on delegate, show Level 0 / Level 1 content. No database.
+If you need saved people or locked pages, deploy
+[`@engine9/core`](../core/docs/deploy.md) as well.
+
 ## Install
 
 ### npm (ESM)
@@ -77,7 +82,10 @@ table) before `requestIdentity` will succeed in production.
 
 ## API
 
-`createEngine9Id({ delegateUrl?, site?, storage?, core?, fetchImpl? })`
+`createEngine9Id({ provider?, delegateUrl?, site?, storage?, core?, fetchImpl? })`
+
+Delegate is the default provider (`createDelegateProvider`). Pass `provider` to
+use another issuer that returns the same Identity shape — this is **not** OIDC.
 
 | Method | What it does |
 | ------ | ------------ |
@@ -97,8 +105,15 @@ table) before `requestIdentity` will succeed in production.
 Storage is `session` (default), `local`, or `memory`. Query builders use
 `site=`, never `audience=`.
 
-`@engine9/id/levels` exports `LEVELS`, `describeLevel`, `meetsLevel`,
-`fieldsForLevel`. `@engine9/id/core` exports `createCoreClient`.
+Exports:
+
+- `@engine9/id/levels` — `LEVELS`, `describeLevel`, `meetsLevel`, `fieldsForLevel`
+- `@engine9/id/core` — `createCoreClient`
+- `@engine9/id/roles` — declared roles / `meetsRequiredAuth` / `evaluateDeclaredRole`
+- `@engine9/id/forms` — `normalizePersonPayload`, `createPersonForm`, `EMAIL_TYPES`
+
+Docs: [without-core](./docs/without-core.md), [with-core](./docs/with-core.md),
+[declared-roles](./docs/declared-roles.md), [forms](./docs/forms.md).
 
 ## Security
 

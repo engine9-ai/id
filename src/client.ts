@@ -1,13 +1,14 @@
 import { createCoreClient } from './core';
-import { fetchDiscovery, fetchJwks } from './discovery';
 import { DelegateIdentityError } from './errors';
 import { meetsLevel } from './levels';
 import { openIdentityPopup } from './popup';
+import { createDelegateProvider } from './provider';
 import { randomId } from './random';
 import { createStorage, STORAGE_KEYS } from './storage';
 import type {
   Engine9Id,
   Engine9IdConfig,
+  Engine9IdProvider,
   EnsureLevelOptions,
   FetchImpl,
   Identity,
@@ -15,14 +16,11 @@ import type {
 } from './types';
 import { DEFAULT_DELEGATE_URL } from './types';
 import {
-  authorizeUrl,
-  bridgeUrl,
-  logoutUrl,
   parseDelegateCallback,
   stripCallbackParams,
   trimSlash,
 } from './url';
-import { CLOCK_SKEW_SECONDS, verifyIdentityToken } from './verify';
+import { CLOCK_SKEW_SECONDS } from './verify';
 
 function defaultFetch(input: string | URL, init?: RequestInit): Promise<Response> {
   if (typeof fetch !== 'function') {
@@ -37,10 +35,6 @@ function currentOrigin(): string {
 
 function currentHref(): string {
   return typeof location !== 'undefined' ? location.href : '';
-}
-
-function delegateOrigin(delegateUrl: string): string {
-  return new URL(delegateUrl).origin;
 }
 
 function isUnexpired(identity: Identity, now = Date.now() / 1000): boolean {
@@ -66,11 +60,22 @@ function assignLocation(url: string): void {
   location.assign(url);
 }
 
+function resolveProvider(
+  config: Engine9IdConfig,
+  fetchImpl: FetchImpl,
+): Engine9IdProvider {
+  if (config.provider) return config.provider;
+  return createDelegateProvider({
+    delegateUrl: trimSlash(config.delegateUrl ?? DEFAULT_DELEGATE_URL),
+    fetchImpl,
+  });
+}
+
 export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
-  const delegateUrl = trimSlash(config.delegateUrl ?? DEFAULT_DELEGATE_URL);
   const site = config.site ?? currentOrigin();
   const storage = createStorage(config.storage ?? 'session');
   const fetchImpl: FetchImpl = config.fetchImpl ?? defaultFetch;
+  const provider = resolveProvider(config, fetchImpl);
   const listeners = new Set<(identity: Identity | null) => void>();
 
   const notify = (identity: Identity | null): void => {
@@ -88,15 +93,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     readStoredIdentity(storage.get(STORAGE_KEYS.identity));
 
   const verifyAndStore = async (token: string, nonce?: string): Promise<Identity> => {
-    const discovery = await fetchDiscovery(delegateUrl, fetchImpl);
-    const jwks = await fetchJwks(discovery.jwks_uri, fetchImpl);
-    const identity = await verifyIdentityToken({
-      token,
-      jwks,
-      site,
-      issuer: discovery.issuer,
-      nonce,
-    });
+    const identity = await provider.verifyToken(token, { site, nonce });
     persist(identity, token);
     return identity;
   };
@@ -116,7 +113,6 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       throw new DelegateIdentityError('invalid_site', 'createEngine9Id requires site');
     }
     const { nonce, state } = beginRequest();
-    const discovery = await fetchDiscovery(delegateUrl, fetchImpl);
     const returnTo = opts.returnTo ?? currentHref();
     const shared = {
       site,
@@ -130,34 +126,41 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
 
     if (opts.mode === 'redirect') {
       assignLocation(
-        authorizeUrl({
+        await provider.buildAuthorizeUrl({
           ...shared,
-          delegateUrl,
           returnTo,
           responseMode: opts.responseMode,
-          authorizeEndpoint: discovery.identity_authorize_endpoint,
         }),
       );
       return;
     }
 
-    const popupUrl = bridgeUrl({
-      ...shared,
-      delegateUrl,
-      bridgeEndpoint: discovery.identity_bridge_endpoint,
-    });
+    if (!provider.buildBridgeUrl) {
+      assignLocation(
+        await provider.buildAuthorizeUrl({
+          ...shared,
+          returnTo,
+          responseMode: opts.responseMode,
+        }),
+      );
+      return;
+    }
+
+    const discovery = await provider.discover();
+    const popupUrl = await provider.buildBridgeUrl(shared);
+    const expectedOrigin = provider.messageOrigin
+      ? provider.messageOrigin(discovery)
+      : new URL(discovery.issuer).origin;
     const message = await openIdentityPopup({
       url: popupUrl,
-      expectedOrigin: delegateOrigin(discovery.issuer || delegateUrl),
+      expectedOrigin,
     });
     if (!message) {
       assignLocation(
-        authorizeUrl({
+        await provider.buildAuthorizeUrl({
           ...shared,
-          delegateUrl,
           returnTo,
           responseMode: opts.responseMode,
-          authorizeEndpoint: discovery.identity_authorize_endpoint,
         }),
       );
       return;
@@ -242,14 +245,17 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
   const logout = (opts: { delegate?: boolean } = {}): void => {
     storage.clearIdentity();
     notify(null);
-    if (opts.delegate) {
-      assignLocation(
-        logoutUrl({
-          delegateUrl,
-          site,
-          returnTo: currentHref(),
-        }),
-      );
+    if (!opts.delegate) return;
+    const built = provider.buildLogoutUrl?.({
+      site,
+      returnTo: currentHref(),
+    });
+    if (typeof built === 'string') {
+      assignLocation(built);
+      return;
+    }
+    if (built && typeof (built as Promise<string>).then === 'function') {
+      void (built as Promise<string>).then(assignLocation);
     }
   };
 

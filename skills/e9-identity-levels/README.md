@@ -15,6 +15,11 @@ The levels intentionally combine the most useful parts of modern web identity in
 > **Important:** engine9 Identity Levels describe **identity confidence**, not authorization.
 >
 > A user may be strongly identified but still not be authorized to perform an action. Roles, permissions, membership, entitlement, employment status, and other authorization decisions are separate.
+>
+> Soft **declared roles** in [`@engine9/id`](../../docs/declared-roles.md) may
+> use `requiredAuth.minLevel` to customize content in the browser. That is not
+> a hard gate. Warehouse **segment roles** (`role_id === segment_id`) live in
+> `@engine9/core` and enforce scopes on the server.
 
 ---
 

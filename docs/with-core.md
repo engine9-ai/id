@@ -1,13 +1,18 @@
 # Using `@engine9/id` with `@engine9/core`
 
 Core is optional. When a Site embeds `@engine9/core`, the browser still
-obtains an Identity Token from delegate. The Site server verifies that token
-(JWKS, no shared secret required) and maps `unid` / `profile_id` to a
-warehouse `person_id` plus Roles.
+obtains an Identity Token from an identity provider (default: **delegate**).
+The Site server verifies that token (JWKS, no shared secret required) and maps
+`unid` / `profile_id` to a warehouse `person_id` plus **segment** Roles.
 
 A **Core Session** is an optional HMAC cache of those Site-only facts. It is
 never required for authentication. Core routes accept either
 `X-Engine9-Session` or `Authorization: Bearer <Identity Token>`.
+
+Deploy core first: [core deploy guide](../../core/docs/deploy.md).
+On-ramp without a database: [without-core.md](./without-core.md),
+[declared-roles.md](./declared-roles.md), [forms.md](./forms.md),
+[`id-demo`](../../id-demo). Festival Site with core: [`demo`](../../demo).
 
 ## When you need core
 
@@ -28,12 +33,23 @@ Create the public key with `e9 create-api-key --scopes public`.
 
 ## Roles and `minLevel`
 
-Roles live in core (`role_id === segment_id`). Example from the festival demo:
+**Segment roles** live in core (`role_id === segment_id`). Example from the
+festival demo:
 
 - VIP: scopes `data:read`, `requiredAuth.minLevel = 1`
 - Admin: scopes `admin`, `requiredAuth.minLevel = 3`
 
 `requiredAuth.twoFactor` still applies on top of the Identity Level.
+
+**Declared roles** in `@engine9/id` use the same `requiredAuth` shape for soft
+UI before `person_segment` exists. Graduate by setting `segment_id` + `scopes`
+and enforcing in core — see [declared-roles.md](./declared-roles.md).
+
+## People form fields
+
+Public register / `POST /people` payloads should use interface names:
+`given_name`, `family_name`, `email`, `email_type` (and optionally `phone`,
+`phone_type`). See [forms.md](./forms.md).
 
 ## Email on `person`
 

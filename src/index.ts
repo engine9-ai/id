@@ -16,6 +16,21 @@ export {
 export { listenForDelegateIdentity, openIdentityPopup } from './popup';
 export { DelegateIdentityError } from './errors';
 export { DEFAULT_DELEGATE_URL } from './types';
+export {
+  meetsRequiredAuth,
+  evaluateDeclaredRole,
+  createRoleRegistry,
+  visibleContent,
+} from './roles';
+export {
+  EMAIL_TYPES,
+  PHONE_TYPES,
+  PERSON_FORM_FIELDS,
+  normalizePersonPayload,
+  identityFieldsFromPersonPayload,
+  createPersonForm,
+} from './forms';
+export { createDelegateProvider } from './provider';
 
 export type {
   CoreClient,
@@ -25,6 +40,7 @@ export type {
   DelegateConfiguration,
   Engine9Id,
   Engine9IdConfig,
+  Engine9IdProvider,
   EnsureLevelOptions,
   FetchImpl,
   Identity,
@@ -40,3 +56,27 @@ export type {
   StorageKind,
 } from './types';
 export type { LevelDescription } from './levels';
+export type {
+  RequiredAuth,
+  DeclaredRole,
+  DeclaredRoleContext,
+  DeclaredRoleEvaluation,
+  DeclaredRoleRegistry,
+} from './roles';
+export type {
+  EmailType,
+  PhoneType,
+  PersonFormField,
+  PersonPayload,
+  NormalizePersonOptions,
+  CreatePersonFormOptions,
+} from './forms';
+export type {
+  IdentityProvider,
+  ProviderConfig,
+  DelegateProviderOptions,
+  BuildAuthorizeOptions,
+  BuildBridgeOptions,
+  BuildLogoutOptions,
+  VerifyTokenOptions,
+} from './provider';

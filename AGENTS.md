@@ -4,6 +4,11 @@ Open-source browser client for engine9 identity. No backend, no runtime
 dependencies. Delegate (private) issues Identity Tokens; this package verifies
 them in the browser.
 
+## Deploy
+
+First-time browser setup: [docs/deploy.md](./docs/deploy.md).
+Database + API (core, including Cloudflare D1): [`core/docs/deploy.md`](../core/docs/deploy.md).
+
 ## Canonical protocol
 
 [docs/protocol.md](./docs/protocol.md) is the wire spec. Keep it in sync with
@@ -21,12 +26,16 @@ APIs. The JWT claim remains `aud`.
 
 - `src/index.ts` — public ESM API (`createEngine9Id` and re-exports)
 - `src/levels.ts` — `@engine9/id/levels`
+- `src/roles.ts` — `@engine9/id/roles` (declared roles / soft `requiredAuth`)
+- `src/forms.ts` — `@engine9/id/forms` (interface person field helpers)
+- `src/provider.ts` — pluggable IdentityProvider (Delegate default)
 - `src/core.ts` — `@engine9/id/core`
 - `src/verify.ts` — WebCrypto ES256 + claim checks
 - `src/iife.ts` — `window.engine9Id`
-- `docs/` — protocol and how-to
+- `docs/` — protocol and how-to (`declared-roles.md`, `forms.md`, …)
 - `skills/e9-identity-levels/` — Level 0–7 vocabulary
 - `examples/` — plain HTML, core, Astro
+- Sibling [`id-demo`](../id-demo) — standalone Level 0/1 soft-content demo
 
 ## Commands
 

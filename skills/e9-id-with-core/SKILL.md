@@ -8,7 +8,9 @@ description: >-
 
 # `@engine9/id` with `@engine9/core`
 
-Read [`docs/with-core.md`](../../docs/with-core.md) and
+Deploy the database first: [`core/docs/deploy.md`](../../../core/docs/deploy.md)
+(Cloudflare + D1 is the main path).
+Then read [`docs/with-core.md`](../../docs/with-core.md) and
 [`docs/protocol.md`](../../docs/protocol.md).
 
 ## 1. Public API key
