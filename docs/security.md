@@ -3,9 +3,9 @@
 ## What the browser can trust
 
 After `@engine9/id` verifies an Identity Token (ES256 via JWKS, `iss`, `aud`
-= this Site origin, `exp` ±60s, optional `nonce`):
+= this Domain, `exp` ±60s, optional `nonce`):
 
-- The token was minted by delegate for this Site.
+- The token was minted by delegate for this Domain.
 - `level` and `profile` fields are what the User granted.
 - Safe uses: personalization, UI, deciding to step up.
 

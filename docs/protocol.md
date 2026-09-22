@@ -14,20 +14,21 @@ product language in docs and APIs (except the JWT claim `aud`, which is RFC 7519
 - **UNID** — Browser-scoped anonymous identifier minted by delegate (UUIDv8,
   `unid` cookie). Level 0 evidence. Never contains PII.
 - **User** — The authenticated person on delegate (today: a Firebase user,
-  `firebaseUid`). Owns one or more Profiles. Never exposed to Sites as an id.
+  `firebaseUid`). Owns one or more Profiles. Never exposed to Domains as an id.
   Not core's warehouse `person_id`, and not an admin "user" on the engine9
   server.
-- **Profile** — A persona the User chooses to present to a Site. Stable
+- **Profile** — A persona the User chooses to present to a Domain. Stable
   `profile_id`, optional display name and contact fields (each with a verified
   flag). Every User has at least one Profile (created on first login). The
   **Anonymous Profile** is the implicit UNID-only profile (Level 0).
-- **Grant** — Remembered decision: share Profile P with Site S at Level L
-  (fields F). Keyed by (`profile_id`, `site`). Created by the chooser;
+- **Grant** — Remembered decision: share Profile P with Domain D at Level L
+  (fields F). Keyed by (`profile_id`, `domain`). Created by the chooser;
   revocable.
-- **Site** — The consuming website, identified by its origin
-  (`https://host[:port]`). Same string as delegate's existing `rootPath`.
-  Query params, tables, and APIs use `site`. The JWT claim is still `aud`
-  (RFC 7519) because verifiers check that name.
+- **Domain** — The login consumer, identified by `host` or `host:port` when the
+  port is not the default for the scheme (443 for https, empty for default http).
+  Examples: `festival.engine9.ai`, `localhost:3000`. Query params and client
+  APIs use `domain`. The JWT claim is still `aud` (RFC 7519) because verifiers
+  check that name; `aud` equals the Domain string (not a full origin URL).
 - **Identity Level** (0–7) — Confidence ladder. Delegate implements 0–4;
   5–7 reserved. Levels are not authorization.
 - **Identity Token** — Delegate-signed JWT (ES256) asserting `unid`,
@@ -96,7 +97,7 @@ Claims:
 | ----- | ------- |
 | `iss` | Issuer, e.g. `https://delegate.engine9.ai` |
 | `sub` | `profile_id`, or `unid:<unid>` for the Anonymous Profile |
-| `aud` | Site origin (standard JWT name; product term is Site) |
+| `aud` | Domain (`host` or `host:port`; product term is Domain) |
 | `iat`, `exp` | Unix seconds. Default TTL 3600s |
 | `jti` | Unique token id |
 | `nonce` | Echo of client nonce when supplied |
@@ -132,8 +133,8 @@ needed).
 
 Query:
 
-- `site` — Site origin (required)
-- `return_to` — absolute URL on that Site (required)
+- `domain` — consumer Domain (required)
+- `return_to` — absolute URL on that Domain (required)
 - `min_level` — 0–4 (default 0)
 - `max_level` — 0–4 (optional cap)
 - `fields` — comma-separated profile field names
@@ -143,13 +144,13 @@ Query:
 
 Rules:
 
-- `return_to` origin must equal `site`.
-- `site` must pass `ALLOWED_RETURN_ORIGINS` or be listed in the `site` table
+- `domainFromUrl(return_to)` must equal `domain`.
+- `domain` must pass `ALLOWED_DOMAINS` or be listed in the `domain` table
   with `allowed = 1`.
 
 Behavior:
 
-1. Resolve UNID; resolve User session; find Grant for (chosen Profile, Site).
+1. Resolve UNID; resolve User session; find Grant for (chosen Profile, Domain).
 2. If a Grant already satisfies `min_level` and `prompt` is `none` or unset,
    issue a token silently.
 3. If `prompt=none` and that is not possible, redirect with
@@ -161,18 +162,18 @@ Behavior:
 Success:
 
 - Default: `return_to#delegate_token=<jwt>&state=<state>` (fragment so the
-  token does not appear in Site server logs).
+  token does not appear in server access logs).
 - `response_mode=query`: `return_to?delegate_token=<jwt>&state=<state>`
   (server-side callbacks such as demo `/auth/delegate`).
 
 Error: `return_to?error=<code>&state=<state>`
 
 Codes: `interaction_required`, `login_required`, `level_unavailable`,
-`access_denied`, `invalid_site`, `invalid_request`.
+`access_denied`, `invalid_domain`, `invalid_request`.
 
 ## Bridge (popup)
 
-`GET /identity/bridge?site=<origin>&min_level=&prompt=&nonce=&state=`
+`GET /identity/bridge?domain=<host[:port]>&min_level=&prompt=&nonce=&state=`
 
 Top-level popup so SameSite=Lax cookies apply. Same chooser logic as authorize.
 On success, `postMessage` to `window.opener`:
@@ -181,7 +182,7 @@ On success, `postMessage` to `window.opener`:
 { "type": "delegate-identity", "token": "<jwt>", "state": "<state>" }
 ```
 
-`targetOrigin` is the Site origin. Then the popup closes.
+`targetOrigin` is the Domain’s page origin (`return_to` origin). Then the popup closes.
 
 Deprecated alias: `GET /profile/bridge` still posts
 `{ "type": "delegate-profile", unid, isNew, loggedIn, email, signInProvider }`.
@@ -193,17 +194,17 @@ Deprecated alias: `GET /profile/bridge` still posts
 - `PATCH /profiles/:id`
 - `DELETE /profiles/:id`
 - `GET /profiles/:id/grants`
-- `DELETE /grants/:id` — revoke a Site
+- `DELETE /grants/:id` — revoke a Domain
 - `POST /profiles/:id/verify/email` — start Level 2 email confirmation
 - `POST /profiles/:id/verify/phone` — start Level 2 phone confirmation
 - `POST /profiles/:id/verify/confirm` — `{ channel, code }`
 
-Human page: `GET /user` — manage Profiles and connected Sites.
+Human page: `GET /user` — manage Profiles and connected Domains.
 
 ## Logout
 
 - `POST /auth/logout` — ends the User session on delegate (existing).
-- `GET /identity/logout?site=&return_to=` — redirect-style logout so a Site
+- `GET /identity/logout?domain=&return_to=` — redirect-style logout so a Domain
   can end the delegate session and return.
 
 ## Level assignment
@@ -228,7 +229,7 @@ interaction, `level_unavailable`.
 
 ## Trust
 
-- Browser (`@engine9/id`): verify ES256 via JWKS, `iss`, `aud` = own origin,
+- Browser (`@engine9/id`): verify ES256 via JWKS, `iss`, `aud` = own Domain,
   `exp` (±60s skew), `nonce`. Safe for personalization and step-up. Cannot
   learn `person_id` or Roles.
 - Core Site: same JWT verification (no shared secret). Maps `unid` /

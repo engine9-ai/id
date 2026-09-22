@@ -3,7 +3,7 @@ import { exportJWK, generateKeyPair, SignJWT, type GenerateKeyPairResult } from 
 import type { FetchImpl, Jwk } from '../src/types';
 
 export const ISSUER = 'https://delegate.engine9.ai';
-export const SITE = 'https://site.example';
+export const DOMAIN = 'site.example';
 
 export interface TestKeys {
   privateKey: GenerateKeyPairResult['privateKey'];
@@ -40,7 +40,7 @@ export async function signIdentityToken(
   let jwt = new SignJWT(payload)
     .setProtectedHeader({ alg: 'ES256', kid: keys.kid, typ: 'JWT' })
     .setIssuer(options.iss ?? ISSUER)
-    .setAudience(options.aud ?? SITE)
+    .setAudience(options.aud ?? DOMAIN)
     .setSubject(options.sub ?? (typeof payload.sub === 'string' ? payload.sub : `unid:${payload.unid}`))
     .setJti('jti-1');
   if (options.iat !== undefined) jwt = jwt.setIssuedAt(options.iat);

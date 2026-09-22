@@ -37,8 +37,8 @@ First-time steps: [deploy.md](./deploy.md).
 
 ## Minimal flow
 
-1. Register the Site origin with delegate (`ALLOWED_RETURN_ORIGINS` or the
-   `site` table).
+1. Register the consumer Domain with delegate (`ALLOWED_RETURN_ORIGINS` or the
+   `domain` table).
 2. On load, `handleCallback()` in case the user is returning from authorize.
 3. On a user gesture, `requestIdentity({ minLevel, mode: "popup" })`.
 4. Render UI from `getIdentity()` — Level badge, display name, email.

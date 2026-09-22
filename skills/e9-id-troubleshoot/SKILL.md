@@ -2,7 +2,7 @@
 name: e9-id-troubleshoot
 description: >-
   Diagnose @engine9/id and delegate identity failures: popup blocked,
-  interaction_required, invalid_site, JWKS fetch, SameSite, Bot Fight on
+  interaction_required, invalid_domain, JWKS fetch, SameSite, Bot Fight on
   localhost, fragment vs query tokens. Use when login redirect fails or
   identity tokens will not verify.
 ---
@@ -14,10 +14,10 @@ description: >-
 `requestIdentity({ mode: "popup" })` needs a user gesture. If `window.open`
 returns null, retry with `mode: "redirect"`.
 
-## `error=invalid_site`
+## `error=invalid_domain`
 
-The Site origin is not on `ALLOWED_RETURN_ORIGINS` and not in the `site`
-table. `return_to` must be the same origin as `site=`.
+The consumer Domain is not on `ALLOWED_RETURN_ORIGINS` and not in the `domain`
+table. `domainFromUrl(return_to)` must equal `domain=`.
 
 ## `error=interaction_required` / `login_required`
 
@@ -31,7 +31,7 @@ the User has no MFA). Lower `min_level` or send them to step-up (Google MFA).
 
 ## JWT will not verify
 
-- `aud` must equal `location.origin` (scheme + host + port).
+- `aud` must equal the configured Domain (`domainFromUrl(location.href)` by default).
 - `iss` must equal the delegate origin from discovery.
 - Fetch JWKS from `/.well-known/jwks.json`; match `kid`.
 - Clock skew: 60s. Expired tokens need `ensureLevel` / re-authorize.
@@ -39,7 +39,7 @@ the User has no MFA). Lower `min_level` or send them to step-up (Google MFA).
 
 ## SameSite / `/profile` fetch
 
-`credentials: "include"` to `delegate.engine9.ai` from another Site will
+`credentials: "include"` to `delegate.engine9.ai` from another origin will
 **not** send Lax cookies. Use `/identity/bridge` (or deprecated
 `/profile/bridge`) in a top-level popup.
 

@@ -16,6 +16,7 @@ import type {
 } from './types';
 import { DEFAULT_DELEGATE_URL } from './types';
 import {
+  domainFromUrl,
   parseDelegateCallback,
   stripCallbackParams,
   trimSlash,
@@ -29,8 +30,9 @@ function defaultFetch(input: string | URL, init?: RequestInit): Promise<Response
   return fetch(input, init);
 }
 
-function currentOrigin(): string {
-  return typeof location !== 'undefined' ? location.origin : '';
+function currentDomain(): string {
+  if (typeof location === 'undefined') return '';
+  return domainFromUrl(location.href) ?? '';
 }
 
 function currentHref(): string {
@@ -72,7 +74,7 @@ function resolveProvider(
 }
 
 export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
-  const site = config.site ?? currentOrigin();
+  const domain = config.domain ?? currentDomain();
   const storage = createStorage(config.storage ?? 'session');
   const fetchImpl: FetchImpl = config.fetchImpl ?? defaultFetch;
   const provider = resolveProvider(config, fetchImpl);
@@ -93,7 +95,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     readStoredIdentity(storage.get(STORAGE_KEYS.identity));
 
   const verifyAndStore = async (token: string, nonce?: string): Promise<Identity> => {
-    const identity = await provider.verifyToken(token, { site, nonce });
+    const identity = await provider.verifyToken(token, { domain, nonce });
     persist(identity, token);
     return identity;
   };
@@ -109,13 +111,13 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
   const requestIdentity = async (
     opts: RequestIdentityOptions,
   ): Promise<Identity | void> => {
-    if (!site) {
-      throw new DelegateIdentityError('invalid_site', 'createEngine9Id requires site');
+    if (!domain) {
+      throw new DelegateIdentityError('invalid_domain', 'createEngine9Id requires domain');
     }
     const { nonce, state } = beginRequest();
     const returnTo = opts.returnTo ?? currentHref();
     const shared = {
-      site,
+      domain,
       minLevel: opts.minLevel,
       maxLevel: opts.maxLevel,
       fields: opts.fields,
@@ -247,7 +249,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     notify(null);
     if (!opts.delegate) return;
     const built = provider.buildLogoutUrl?.({
-      site,
+      domain,
       returnTo: currentHref(),
     });
     if (typeof built === 'string') {

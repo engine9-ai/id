@@ -5,13 +5,13 @@ verifies short-lived **Identity Tokens** (JWT, ES256) with the public JWKS, and
 exposes a small API for UNID, Identity Levels, and optional `@engine9/core`.
 
 The wire format lives in [docs/protocol.md](./docs/protocol.md). That file is
-canonical. Vocabulary: **User**, **Site**, **Profile**, **Grant**, **UNID**,
+canonical. Vocabulary: **User**, **Domain**, **Profile**, **Grant**, **UNID**,
 **Identity Level**. The JWT claim is still `aud` (RFC 7519).
 
 Zero runtime dependencies. WebCrypto only.
 
 **First deploy:** [docs/deploy.md](./docs/deploy.md) — add the script, allow
-your website origin on delegate, show Level 0 / Level 1 content. No database.
+your website domain on delegate, show Level 0 / Level 1 content. No database.
 If you need saved people or locked pages, deploy
 [`@engine9/core`](../core/docs/deploy.md) as well.
 
@@ -48,11 +48,11 @@ The IIFE assigns `window.engine9Id` (`createEngine9Id`, `LEVELS`,
 
 ### Without core
 
-The Site never sees `person_id` or Roles. Use the verified token for
+The consumer never sees `person_id` or Roles. Use the verified token for
 personalization, a Level badge, and step-up. See [docs/without-core.md](./docs/without-core.md).
 
 ```js
-const id = createEngine9Id(); // site defaults to location.origin
+const id = createEngine9Id(); // domain defaults from location
 await id.handleCallback();
 if (!id.getIdentity()) {
   await id.requestIdentity({ minLevel: 1, mode: 'popup' });
@@ -77,12 +77,12 @@ await id.core.login();
 const me = await id.core.me();
 ```
 
-Register the Site origin with delegate (`ALLOWED_RETURN_ORIGINS` or the `site`
-table) before `requestIdentity` will succeed in production.
+Register the consumer domain with delegate (`ALLOWED_RETURN_ORIGINS` or the
+`domain` table) before `requestIdentity` will succeed in production.
 
 ## API
 
-`createEngine9Id({ provider?, delegateUrl?, site?, storage?, core?, fetchImpl? })`
+`createEngine9Id({ provider?, delegateUrl?, domain?, storage?, core?, fetchImpl? })`
 
 Delegate is the default provider (`createDelegateProvider`). Pass `provider` to
 use another issuer that returns the same Identity shape — this is **not** OIDC.
@@ -103,7 +103,7 @@ use another issuer that returns the same Identity shape — this is **not** OIDC
 | `core.fetch(path, init)` | Adds the public key and session headers |
 
 Storage is `session` (default), `local`, or `memory`. Query builders use
-`site=`, never `audience=`.
+`domain=`, never `audience=`.
 
 Exports:
 
@@ -117,7 +117,7 @@ Docs: [without-core](./docs/without-core.md), [with-core](./docs/with-core.md),
 
 ## Security
 
-After verification (ES256 via JWKS, `iss`, `aud ===` this Site origin, `exp`
+After verification (ES256 via JWKS, `iss`, `aud ===` this Domain, `exp`
 ±60s, optional `nonce`):
 
 - Safe: personalization, UI, deciding to step up.
@@ -125,7 +125,7 @@ After verification (ES256 via JWKS, `iss`, `aud ===` this Site origin, `exp`
   run JavaScript on the page can read storage.
 - Levels are confidence, not Roles.
 - Accept popup `postMessage` only from the delegate origin.
-- Default `response_mode=fragment` so the token stays out of Site server logs.
+- Default `response_mode=fragment` so the token stays out of server access logs.
 
 Full model: [docs/security.md](./docs/security.md). Levels: [docs/levels.md](./docs/levels.md).
 

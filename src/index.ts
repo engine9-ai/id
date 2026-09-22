@@ -11,6 +11,7 @@ export {
   authorizeUrl,
   bridgeUrl,
   logoutUrl,
+  domainFromUrl,
   parseDelegateCallback,
 } from './url';
 export { listenForDelegateIdentity, openIdentityPopup } from './popup';

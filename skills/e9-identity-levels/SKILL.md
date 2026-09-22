@@ -19,7 +19,7 @@ Wire protocol and implemented 0–4 assignment:
 ## Rules for agents
 
 - Levels are **identity confidence**, never Roles or permissions.
-- Use **User**, **Site**, **Profile**, **Grant**, **Identity Token**.
+- Use **User**, **Domain**, **Profile**, **Grant**, **Identity Token**.
 - Do not label a provider as a level (“Google = 4”). Google + fresh MFA can
   *qualify* for Level 4; the token `level` is computed per event.
 - Levels 5–7 are reserved (real-world proofing). Do not invent endpoints.

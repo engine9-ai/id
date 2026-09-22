@@ -6,7 +6,7 @@ import {
   createTestKeys,
   ISSUER,
   signIdentityToken,
-  SITE,
+  DOMAIN,
   tamperToken,
 } from './helpers';
 
@@ -17,12 +17,12 @@ describe('verifyIdentityToken', () => {
     const identity = await verifyIdentityToken({
       token,
       jwks: { keys: [keys.jwk] },
-      site: SITE,
+      domain: DOMAIN,
       issuer: ISSUER,
     });
     expect(identity.unid).toBe('u-42');
     expect(identity.level).toBe(2);
-    expect(identity.aud).toBe(SITE);
+    expect(identity.aud).toBe(DOMAIN);
     expect(identity.iss).toBe(ISSUER);
   });
 
@@ -33,23 +33,23 @@ describe('verifyIdentityToken', () => {
       verifyIdentityToken({
         token: tamperToken(token),
         jwks: { keys: [keys.jwk] },
-        site: SITE,
+        domain: DOMAIN,
         issuer: ISSUER,
       }),
     ).rejects.toThrow(/signature/i);
   });
 
-  it('rejects the wrong site (aud)', async () => {
+  it('rejects the wrong domain (aud)', async () => {
     const keys = await createTestKeys();
-    const token = await signIdentityToken(keys, {}, { aud: 'https://other.example' });
+    const token = await signIdentityToken(keys, {}, { aud: 'other.example' });
     await expect(
       verifyIdentityToken({
         token,
         jwks: { keys: [keys.jwk] },
-        site: SITE,
+        domain: DOMAIN,
         issuer: ISSUER,
       }),
-    ).rejects.toThrow(/aud|site/i);
+    ).rejects.toThrow(/aud|domain/i);
   });
 
   it('rejects an expired token beyond the 60s skew', async () => {
@@ -64,7 +64,7 @@ describe('verifyIdentityToken', () => {
       verifyIdentityToken({
         token,
         jwks: { keys: [keys.jwk] },
-        site: SITE,
+        domain: DOMAIN,
         issuer: ISSUER,
         now,
       }),
@@ -78,7 +78,7 @@ describe('verifyIdentityToken', () => {
       verifyIdentityToken({
         token,
         jwks: { keys: [keys.jwk] },
-        site: SITE,
+        domain: DOMAIN,
         issuer: ISSUER,
         nonce: 'xyz',
       }),

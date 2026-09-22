@@ -2,9 +2,24 @@ export function trimSlash(url: string): string {
   return url.replace(/\/+$/, '');
 }
 
+/**
+ * Canonical login consumer id: lowercased host, or `host:port` when `URL.port`
+ * is non-empty (default https/http ports omitted).
+ */
+export function domainFromUrl(urlOrOrigin: string): string | null {
+  try {
+    const u = new URL(urlOrOrigin);
+    const hostname = u.hostname.toLowerCase();
+    if (!hostname) return null;
+    return u.port ? `${hostname}:${u.port}` : hostname;
+  } catch {
+    return null;
+  }
+}
+
 export interface AuthorizeUrlOptions {
   delegateUrl: string;
-  site: string;
+  domain: string;
   returnTo: string;
   minLevel?: number;
   maxLevel?: number;
@@ -18,7 +33,7 @@ export interface AuthorizeUrlOptions {
 
 export interface BridgeUrlOptions {
   delegateUrl: string;
-  site: string;
+  domain: string;
   minLevel?: number;
   maxLevel?: number;
   fields?: string[] | string;
@@ -30,7 +45,7 @@ export interface BridgeUrlOptions {
 
 export interface LogoutUrlOptions {
   delegateUrl: string;
-  site: string;
+  domain: string;
   returnTo?: string;
   logoutEndpoint?: string;
 }
@@ -49,12 +64,12 @@ function fieldsParam(fields?: string[] | string): string | undefined {
   return Array.isArray(fields) ? fields.join(',') : fields;
 }
 
-/** Build GET /identity/authorize. Query param is `site` (not audience). */
+/** Build GET /identity/authorize. Query param is `domain` (not audience). */
 export function authorizeUrl(opts: AuthorizeUrlOptions): string {
   const base =
     opts.authorizeEndpoint ?? `${trimSlash(opts.delegateUrl)}/identity/authorize`;
   const url = new URL(base);
-  url.searchParams.set('site', opts.site);
+  url.searchParams.set('domain', opts.domain);
   url.searchParams.set('return_to', opts.returnTo);
   setOptional(url.searchParams, 'min_level', opts.minLevel);
   setOptional(url.searchParams, 'max_level', opts.maxLevel);
@@ -71,7 +86,7 @@ export function bridgeUrl(opts: BridgeUrlOptions): string {
   const base =
     opts.bridgeEndpoint ?? `${trimSlash(opts.delegateUrl)}/identity/bridge`;
   const url = new URL(base);
-  url.searchParams.set('site', opts.site);
+  url.searchParams.set('domain', opts.domain);
   setOptional(url.searchParams, 'min_level', opts.minLevel);
   setOptional(url.searchParams, 'max_level', opts.maxLevel);
   setOptional(url.searchParams, 'fields', fieldsParam(opts.fields));
@@ -86,7 +101,7 @@ export function logoutUrl(opts: LogoutUrlOptions): string {
   const base =
     opts.logoutEndpoint ?? `${trimSlash(opts.delegateUrl)}/identity/logout`;
   const url = new URL(base);
-  url.searchParams.set('site', opts.site);
+  url.searchParams.set('domain', opts.domain);
   setOptional(url.searchParams, 'return_to', opts.returnTo);
   return url.toString();
 }

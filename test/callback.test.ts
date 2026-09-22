@@ -7,7 +7,7 @@ import {
   ISSUER,
   mockDelegateFetch,
   signIdentityToken,
-  SITE,
+  DOMAIN,
 } from './helpers';
 
 function setPageUrl(pathAndHash: string): void {
@@ -44,7 +44,7 @@ describe('handleCallback', () => {
 
     const id = createEngine9Id({
       delegateUrl: ISSUER,
-      site: SITE,
+      domain: DOMAIN,
       storage: 'memory',
       fetchImpl: mockDelegateFetch(keys.jwk),
     });
@@ -64,7 +64,7 @@ describe('handleCallback', () => {
 
     const id = createEngine9Id({
       delegateUrl: ISSUER,
-      site: SITE,
+      domain: DOMAIN,
       storage: 'memory',
       fetchImpl: mockDelegateFetch(keys.jwk),
     });

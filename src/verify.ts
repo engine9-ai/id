@@ -7,7 +7,7 @@ export const CLOCK_SKEW_SECONDS = 60;
 export interface VerifyIdentityTokenOptions {
   token: string;
   jwks: Jwks | Jwk[];
-  site: string;
+  domain: string;
   issuer: string;
   nonce?: string;
   now?: number;
@@ -77,9 +77,9 @@ function findJwk(keys: Jwk[], kid?: string): Jwk {
   throw new DelegateIdentityError('invalid_token', 'JWT is missing kid');
 }
 
-function audienceMatches(aud: unknown, site: string): boolean {
-  if (typeof aud === 'string') return aud === site;
-  if (Array.isArray(aud)) return aud.includes(site);
+function audienceMatches(aud: unknown, domain: string): boolean {
+  if (typeof aud === 'string') return aud === domain;
+  if (Array.isArray(aud)) return aud.includes(domain);
   return false;
 }
 
@@ -129,12 +129,12 @@ export function decodeJwt(
 
 /**
  * Verify an Identity Token with WebCrypto ES256.
- * Checks `iss`, `aud === site`, `exp` (±60s), and `nonce` when supplied.
+ * Checks `iss`, `aud === domain`, `exp` (±60s), and `nonce` when supplied.
  */
 export async function verifyIdentityToken(
   opts: VerifyIdentityTokenOptions,
 ): Promise<Identity> {
-  const { token, site, issuer, nonce } = opts;
+  const { token, domain, issuer, nonce } = opts;
   const now = opts.now ?? Date.now() / 1000;
   const { header, payload, signingInput, signature } = decodeJwt(token);
 
@@ -161,8 +161,8 @@ export async function verifyIdentityToken(
   if (!issuerMatches(payload.iss, issuer)) {
     throw new DelegateIdentityError('invalid_token', 'Identity Token issuer mismatch');
   }
-  if (!audienceMatches(payload.aud, site)) {
-    throw new DelegateIdentityError('invalid_token', 'Identity Token site (aud) mismatch');
+  if (!audienceMatches(payload.aud, domain)) {
+    throw new DelegateIdentityError('invalid_token', 'Identity Token domain (aud) mismatch');
   }
 
   const exp = payload.exp;

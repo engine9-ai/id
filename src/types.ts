@@ -65,7 +65,7 @@ export interface Engine9IdProvider {
   readonly id: string;
   discover(): Promise<DelegateConfiguration>;
   buildAuthorizeUrl(opts: {
-    site: string;
+    domain: string;
     returnTo: string;
     minLevel?: number;
     maxLevel?: number;
@@ -76,7 +76,7 @@ export interface Engine9IdProvider {
     responseMode?: ResponseMode;
   }): Promise<string> | string;
   buildBridgeUrl?(opts: {
-    site: string;
+    domain: string;
     minLevel?: number;
     maxLevel?: number;
     fields?: string[];
@@ -85,13 +85,13 @@ export interface Engine9IdProvider {
     state?: string;
   }): Promise<string> | string;
   buildLogoutUrl?(opts: {
-    site: string;
+    domain: string;
     returnTo?: string;
   }): Promise<string> | string;
   messageOrigin?(config: DelegateConfiguration): string;
   verifyToken(
     token: string,
-    opts: { site: string; nonce?: string },
+    opts: { domain: string; nonce?: string },
   ): Promise<Identity>;
 }
 
@@ -103,8 +103,8 @@ export interface Engine9IdConfig {
   provider?: Engine9IdProvider;
   /** Delegate origin shortcut when using the default provider. Default `https://delegate.engine9.ai`. */
   delegateUrl?: string;
-  /** This Site's origin. Default `location.origin`. JWT `aud` must match. */
-  site?: string;
+  /** This consumer domain (`host` or `host:port`). Default from `location`. JWT `aud` must match. */
+  domain?: string;
   /** Where to persist the token. Default `session`. */
   storage?: StorageKind;
   /** Optional `@engine9/core` Site API. */

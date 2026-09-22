@@ -18,7 +18,7 @@ authorize query params, callback names, or `postMessage` shape, update
 
 ## Vocabulary
 
-Use **User**, **Site**, **Profile**, **Grant**, **UNID**, **Identity Level**,
+Use **User**, **Domain**, **Profile**, **Grant**, **UNID**, **Identity Level**,
 **Identity Token**, **Core Session**. Never “Account” or “Audience” in docs or
 APIs. The JWT claim remains `aud`.
 
@@ -59,7 +59,7 @@ any other runtime dependency, to the published library.
 
 ## Implementation notes
 
-- Authorize / bridge / logout URLs take query param `site`, not `audience`.
+- Authorize / bridge / logout URLs take query param `domain`, not `audience`.
 - Popup messages: `type === 'delegate-identity'` and `event.origin` must be
   the delegate origin.
 - Clock skew on `exp` / `iat` is 60 seconds.

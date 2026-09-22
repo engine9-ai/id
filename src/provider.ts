@@ -19,7 +19,7 @@ import { verifyIdentityToken } from './verify';
 export type ProviderConfig = DelegateConfiguration;
 
 export interface BuildAuthorizeOptions {
-  site: string;
+  domain: string;
   returnTo: string;
   minLevel?: number;
   maxLevel?: number;
@@ -31,7 +31,7 @@ export interface BuildAuthorizeOptions {
 }
 
 export interface BuildBridgeOptions {
-  site: string;
+  domain: string;
   minLevel?: number;
   maxLevel?: number;
   fields?: string[];
@@ -41,12 +41,12 @@ export interface BuildBridgeOptions {
 }
 
 export interface BuildLogoutOptions {
-  site: string;
+  domain: string;
   returnTo?: string;
 }
 
 export interface VerifyTokenOptions {
-  site: string;
+  domain: string;
   nonce?: string;
 }
 
@@ -97,7 +97,7 @@ export function createDelegateProvider(
       const discovery = await fetchDiscovery(delegateUrl, fetchImpl);
       return authorizeUrl({
         delegateUrl,
-        site: opts.site,
+        domain: opts.domain,
         returnTo: opts.returnTo,
         minLevel: opts.minLevel,
         maxLevel: opts.maxLevel,
@@ -114,7 +114,7 @@ export function createDelegateProvider(
       const discovery = await fetchDiscovery(delegateUrl, fetchImpl);
       return bridgeUrl({
         delegateUrl,
-        site: opts.site,
+        domain: opts.domain,
         minLevel: opts.minLevel,
         maxLevel: opts.maxLevel,
         fields: opts.fields,
@@ -129,7 +129,7 @@ export function createDelegateProvider(
       const discovery = defaultConfiguration(delegateUrl);
       return logoutUrl({
         delegateUrl,
-        site: opts.site,
+        domain: opts.domain,
         returnTo: opts.returnTo,
         logoutEndpoint: discovery.logout_endpoint,
       });
@@ -145,7 +145,7 @@ export function createDelegateProvider(
       return verifyIdentityToken({
         token,
         jwks,
-        site: opts.site,
+        domain: opts.domain,
         issuer: discovery.issuer,
         nonce: opts.nonce,
       });

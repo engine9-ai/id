@@ -1,28 +1,31 @@
 ---
 name: e9-id-deploy
 description: >-
-  Deploy @engine9/id on any website: register the Site origin with delegate,
+  Deploy @engine9/id on any website: register the Domain with delegate,
   add the script or npm package, handleCallback, requestIdentity, render by
   Identity Level. Use when installing engine9 identity, adding delegate login
   to a site, or wiring Level 0/1 sharing without core.
 ---
 
-# Deploy `@engine9/id` on a Site
+# Deploy `@engine9/id`
 
 Human deploy guide (start here): [`docs/deploy.md`](../../docs/deploy.md).
 Canonical protocol: [`docs/protocol.md`](../../docs/protocol.md).
 Without-core guide: [`docs/without-core.md`](../../docs/without-core.md).
 
-## 1. Register the Site
+## 1. Register the Domain
 
-The Site origin must be allowed by delegate:
+The consumer Domain must be allowed by delegate:
 
-- Add to `ALLOWED_RETURN_ORIGINS` (suffix `.example.com` or full origin), or
-- Insert into the delegate `site` table (`origin`, `allowed = 1`).
+- Add to `ALLOWED_RETURN_ORIGINS` (suffix `.example.com` or full origin whose
+  `domainFromUrl` matches), or
+- Insert into the delegate `domain` table (`domain`, `allowed = 1`).
 
-Local demo ports already allowed: `http://localhost:3000`–`3003`.
+Local demo ports already allowed: `http://localhost:3000`–`3003` (Domain
+`localhost:3000`, etc.).
 
-There is no OAuth `client_id`. The Site is its origin.
+There is no OAuth `client_id`. The consumer is its Domain (`host` or
+`host:port`).
 
 ## 2. Add the library
 
@@ -37,7 +40,7 @@ import { createEngine9Id } from "@engine9/id";
 
 const id = createEngine9Id({
   delegateUrl: "https://delegate.engine9.ai",
-  site: location.origin, // default
+  // domain defaults from location via domainFromUrl
   storage: "session",
 });
 
@@ -83,7 +86,7 @@ else if (meetsLevel(ident, 3)) showTrusted(ident.profile);
 ## 5. Errors
 
 Redirect/query `error=`: `interaction_required`, `login_required`,
-`level_unavailable`, `access_denied`, `invalid_site`, `invalid_request`.
+`level_unavailable`, `access_denied`, `invalid_domain`, `invalid_request`.
 
 Popup blocked: fall back to `mode: "redirect"`.
 
