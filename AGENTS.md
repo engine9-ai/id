@@ -35,7 +35,7 @@ APIs. The JWT claim remains `aud`.
 - `docs/` — protocol and how-to (`declared-roles.md`, `forms.md`, …)
 - `skills/e9-identity-levels/` — Level 0–7 vocabulary
 - `examples/` — plain HTML, core, Astro
-- Sibling [`id-demo`](../id-demo) — standalone Level 0/1 soft-content demo
+- Sibling [`demo-id`](../demo-id) — standalone Level 0/1 soft-content demo
 
 ## Commands
 

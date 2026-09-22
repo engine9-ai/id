@@ -33,5 +33,5 @@ after `requestIdentity`. Server routes such as `/auth/delegate` should accept
 `response_mode=query` (`?delegate_token=`) and verify the JWT with JWKS — do
 not log the query string.
 
-The festival demo (`/Users/clundberg/engine9/demo`) is the full Astro + core
+The festival demo (`/Users/clundberg/engine9/demo-festival`) is the full Astro + core
 reference once it adopts this package.

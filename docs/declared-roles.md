@@ -32,7 +32,7 @@ Levels are **confidence**, never Roles. See [levels.md](./levels.md) and
 
 Core’s registry is keyed by segment UUID and omits page-local `match`. See
 [`core/auth/README.md`](../../core/auth/README.md) and the festival demo
-[`demo/src/lib/roles.ts`](../../demo/src/lib/roles.ts).
+[`demo-festival/src/lib/roles.ts`](../../demo-festival/src/lib/roles.ts).
 
 ## Soft evaluation
 
@@ -67,7 +67,7 @@ actions. Hard gates belong in core.
 
 ## Graduation path
 
-1. Start with declared roles in `@engine9/id` / [id-demo](../../id-demo).
+1. Start with declared roles in `@engine9/id` / [demo-id](../../demo-id).
 2. Add `@engine9/core`, map each declared `id` → `segment_id`, store membership
    in `person_segment`.
 3. Keep the same `requiredAuth` / `name`; add `scopes` and enforce on API

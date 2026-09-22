@@ -38,7 +38,7 @@ export async function signIdentityToken(
     ...claims,
   };
   let jwt = new SignJWT(payload)
-    .setProtectedHeader({ alg: 'ES256', kid: keys.kid, typ: 'delegate+jwt' })
+    .setProtectedHeader({ alg: 'ES256', kid: keys.kid, typ: 'JWT' })
     .setIssuer(options.iss ?? ISSUER)
     .setAudience(options.aud ?? SITE)
     .setSubject(options.sub ?? (typeof payload.sub === 'string' ? payload.sub : `unid:${payload.unid}`))

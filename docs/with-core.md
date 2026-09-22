@@ -12,7 +12,7 @@ never required for authentication. Core routes accept either
 Deploy core first: [core deploy guide](../../core/docs/deploy.md).
 On-ramp without a database: [without-core.md](./without-core.md),
 [declared-roles.md](./declared-roles.md), [forms.md](./forms.md),
-[`id-demo`](../../id-demo). Festival Site with core: [`demo`](../../demo).
+[`demo-id`](../../demo-id). Festival Site with core: [`demo-festival`](../../demo-festival).
 
 ## When you need core
 

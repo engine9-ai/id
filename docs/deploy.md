@@ -8,7 +8,7 @@ If you also need a people database, signups stored as rows, or pages that
 **refuse** access, use [`@engine9/core`](../../core/docs/deploy.md) as well.
 `id` still runs in the browser; core runs on your site.
 
-Working example with no database: [`id-demo`](../../id-demo).
+Working example with no database: [`demo-id`](../../demo-id).
 
 ## Which package?
 
@@ -127,7 +127,7 @@ if (level < 1) {
 
 For “Activists at Level 1 see this section”, define a **declared role** on
 the page. Full pattern: [declared-roles.md](./declared-roles.md). The
-[`id-demo`](../../id-demo) page is a complete example.
+[`demo-id`](../../demo-id) page is a complete example.
 
 ## Step 4 — Forms
 

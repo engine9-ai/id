@@ -58,5 +58,5 @@ Profile Grants from delegate use contact fields without warehouse types
 
 ## Demos
 
-- Standalone (no core): [id-demo](../../id-demo) — local echo of the same payload.
-- With core: [demo](../../demo) register form → `POST /api/people`.
+- Standalone (no core): [demo-id](../../demo-id) — local echo of the same payload.
+- With core: [demo-festival](../../demo-festival) register form → `POST /api/people`.

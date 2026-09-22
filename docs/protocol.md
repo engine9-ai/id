@@ -64,12 +64,38 @@ product language in docs and APIs (except the JWT claim `aud`, which is RFC 7519
 }
 ```
 
-`GET /.well-known/jwks.json` — current + previous public keys with `kid`.
-`Cache-Control: public, max-age=3600`.
+`GET /.well-known/jwks.json` — current + previous public keys, each with a
+distinct `kid`. `Content-Type: application/jwk-set+json`.
+`Cache-Control: public, max-age=3600`. A previous key with the same `kid` as
+the current key is omitted.
+
+## Standards
+
+Identity Tokens are JSON Web Tokens. Issuance and verification follow:
+
+- **RFC 7519** — JWT. Header `typ` is `JWT`. Registered claims in use: `iss`,
+  `sub`, `aud`, `iat`, `exp`, `jti`. Other claims (`unid`, `level`, `profile`,
+  `auth`, `grant`, `nonce`) are private claims agreed by this protocol.
+- **RFC 7515** — compact JWS serialization.
+- **RFC 7518** — `alg` is `ES256` only (ECDSA using P-256 and SHA-256).
+- **RFC 7517** — public keys are a JWK Set (`{"keys":[...]}`) at the URL in
+  `jwks_uri`. Response media type is `application/jwk-set+json`. Each key
+  publishes `kty`, `crv`, `x`, `y`, `kid`, `use` (`sig`), and `alg`. Private
+  `d` is never published. `use` and `key_ops` are not sent together.
+- **RFC 8725** — verifiers pin `alg` to ES256, require `kid` when more than
+  one key is published, and check `iss`, `aud`, and `exp`.
+
+This protocol is **not OAuth 2.0** (RFC 6749) and **not OpenID Connect**.
+There is no client registration, authorization code, token endpoint, or
+`grant_type`. Discovery is `/.well-known/delegate-configuration`, not
+`/.well-known/oauth-authorization-server` (RFC 8414) or
+`/.well-known/openid-configuration`. The delivered parameter is
+`delegate_token`, not `access_token` or `id_token`. `jwks_uri` is the same
+field name those specs use; here it only locates the JWK Set.
 
 ## Identity Token (JWT, ES256)
 
-Header: `{ "alg": "ES256", "kid": "<key id>", "typ": "delegate+jwt" }`
+Header: `{ "alg": "ES256", "kid": "<key id>", "typ": "JWT" }`
 
 Claims:
 

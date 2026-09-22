@@ -7,7 +7,7 @@ via JWKS, and uses the payload for personalization and step-up. It cannot learn
 
 See [protocol.md](./protocol.md) for the wire format. Soft content roles:
 [declared-roles.md](./declared-roles.md). Form field names: [forms.md](./forms.md).
-Working example: [`id-demo`](../../id-demo).
+Working example: [`demo-id`](../../demo-id).
 First-time steps: [deploy.md](./deploy.md).
 
 ## What you can do client-only
