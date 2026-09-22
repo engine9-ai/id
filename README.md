@@ -10,6 +10,9 @@ canonical. Vocabulary: **User**, **Domain**, **Profile**, **Grant**, **UNID**,
 
 Zero runtime dependencies. WebCrypto only.
 
+This package is [MIT licensed](./LICENSE). Use, copy, modify, and distribute
+this code as-is.
+
 **First deploy:** [docs/deploy.md](./docs/deploy.md) — add the script, allow
 your website domain on delegate, show Level 0 / Level 1 content. No database.
 If you need saved people or locked pages, deploy
@@ -137,4 +140,4 @@ bridge to open as a top-level window (this library does that).
 
 ## License
 
-[GPL-2.0](./LICENSE)
+[MIT](./LICENSE). Use, copy, modify, and distribute this code as-is.

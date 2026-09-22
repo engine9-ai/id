@@ -4,6 +4,15 @@ Open-source browser client for engine9 identity. No backend, no runtime
 dependencies. Delegate (private) issues Identity Tokens; this package verifies
 them in the browser.
 
+## License
+
+`@engine9/id` is MIT licensed. See [LICENSE](LICENSE). Use, copy, modify, and
+distribute this code as-is. No further permission is required.
+
+`@engine9/core`, `@engine9/interfaces`, `demo-festival`, and `demo-id` are
+also MIT. The private repositories `delegate` and `server` are not open
+source. Do not copy code from those repositories under this license.
+
 ## Deploy
 
 First-time browser setup: [docs/deploy.md](./docs/deploy.md).

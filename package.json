@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Browser client for engine9 identity: verify delegate Identity Tokens, request identity at a minimum level, and optionally talk to @engine9/core.",
   "type": "module",
-  "license": "GPL-2.0",
+  "license": "MIT",
   "author": "Engine9",
   "engines": {
     "node": ">=22"
