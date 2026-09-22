@@ -16,9 +16,6 @@ The browser cannot learn core `person_id` or Roles.
 The same JWT, verified the same way (or via `jose` + JWKS). Plus warehouse
 facts (`person_id`, Roles) after mapping `unid` / `profile_id`.
 
-Legacy handoff (`delegate_code` + `DELEGATE_SHARED_SECRET`) is equivalent
-trust for the identity payload, but requires a per-Site secret.
-
 ## Threats and mitigations
 
 - **Token in server logs.** Default `response_mode=fragment` puts

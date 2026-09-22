@@ -93,5 +93,3 @@ Popup blocked: fall back to `mode: "redirect"`.
   use `responseMode: "query"` and verify the JWT on the server (or via core).
 - **React:** create one `id` instance in a provider; `onChange` to re-render.
 - **Next:** keep secrets off the client; use the public Identity Token only.
-
-Do not put `DELEGATE_SHARED_SECRET` in frontend code.

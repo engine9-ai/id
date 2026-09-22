@@ -43,11 +43,11 @@ the User has no MFA). Lower `min_level` or send them to step-up (Google MFA).
 **not** send Lax cookies. Use `/identity/bridge` (or deprecated
 `/profile/bridge`) in a top-level popup.
 
-## Localhost + legacy handoff
+## Localhost callbacks
 
-`POST /handoff/exchange` from a local server is often blocked by Cloudflare
-Bot Fight. Prefer Identity Tokens (`delegate_token`). Legacy escape hatch:
-`/handoff/browser-exchange` → `delegate_bridge`.
+Server callbacks on localhost use `response_mode=query` and
+`?delegate_token=`. Verify that JWT with Delegate JWKS. There is no
+server-to-server code exchange.
 
 ## Fragment vs query
 

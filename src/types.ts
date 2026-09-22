@@ -155,11 +155,6 @@ export interface DelegateConfiguration {
   profile_endpoint?: string;
   levels_supported?: number[];
   token_signing_alg_values_supported?: string[];
-  legacy_handoff_endpoints?: {
-    authorize?: string;
-    exchange?: string;
-    browser_exchange?: string;
-  };
 }
 
 export interface CoreSession {

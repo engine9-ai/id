@@ -37,8 +37,6 @@ product language in docs and APIs (except the JWT claim `aud`, which is RFC 7519
   of verified identity plus Site-only facts. Never required for authentication.
 - **Role** — Core authorization (`role_id === segment_id`). Not an identity
   concept. Roles may require `minLevel` and/or `twoFactor`.
-- **Handoff (legacy)** — `delegate_code` / `delegate_bridge` + per-Site shared
-  secret. Server-only. Still supported.
 - **Session Bridge** — HMAC carrier of Firebase tokens to engine9 API hosts
   (MCP). Used by conductor-ui. Not this protocol.
 
@@ -55,12 +53,7 @@ product language in docs and APIs (except the JWT claim `aud`, which is RFC 7519
   "logout_endpoint": "https://delegate.engine9.ai/identity/logout",
   "profile_endpoint": "https://delegate.engine9.ai/profiles",
   "levels_supported": [0, 1, 2, 3, 4],
-  "token_signing_alg_values_supported": ["ES256"],
-  "legacy_handoff_endpoints": {
-    "authorize": "https://delegate.engine9.ai/handoff/authorize",
-    "exchange": "https://delegate.engine9.ai/handoff/exchange",
-    "browser_exchange": "https://delegate.engine9.ai/handoff/browser-exchange"
-  }
+  "token_signing_alg_values_supported": ["ES256"]
 }
 ```
 
@@ -232,12 +225,6 @@ Implemented in delegate `src/lib/levels.ts`.
 
 Achieved level is `min(evidence, max_level)`. If still `< min_level` after
 interaction, `level_unavailable`.
-
-## Legacy handoff
-
-`/handoff/authorize`, `/handoff/exchange`, `/handoff/browser-exchange` are
-unchanged for existing Sites. Exchange JSON additionally includes
-`profile_id`, `level`, and `identity_token` when signing keys are configured.
 
 ## Trust
 

@@ -18,11 +18,6 @@ export function defaultConfiguration(delegateUrl: string): DelegateConfiguration
     profile_endpoint: `${base}/profiles`,
     levels_supported: [0, 1, 2, 3, 4],
     token_signing_alg_values_supported: ['ES256'],
-    legacy_handoff_endpoints: {
-      authorize: `${base}/handoff/authorize`,
-      exchange: `${base}/handoff/exchange`,
-      browser_exchange: `${base}/handoff/browser-exchange`,
-    },
   };
 }
 

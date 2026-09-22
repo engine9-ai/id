@@ -56,8 +56,3 @@ Public register / `POST /people` payloads should use interface names:
 Core copies Profile email onto the person record only when
 `email_verified` is true (Level ≥ 2). Self-asserted emails stay on the token
 for display; they do not pollute warehouse identity.
-
-## Legacy handoff
-
-Sites that still use `DELEGATE_SHARED_SECRET` and `?delegate_code=` /
-`?delegate_bridge=` continue to work. Prefer Identity Tokens for new Sites.
