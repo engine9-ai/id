@@ -3,7 +3,7 @@
 Core is optional. When a Site embeds `@engine9/core`, the browser still
 obtains an Identity Token from an identity provider (default: **delegate**).
 The Site server verifies that token (JWKS, no shared secret required) and maps
-`unid` / `profile_id` to a warehouse `person_id` plus **segment** Roles.
+`pseudonym` / `sub` to a warehouse `person_id` plus **segment** Roles.
 
 A **Core Session** is an optional HMAC cache of those Site-only facts. It is
 never required for authentication. Core routes accept either

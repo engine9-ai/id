@@ -11,16 +11,23 @@ product language in docs and APIs (except the JWT claim `aud`, which is RFC 7519
 
 ## Vocabulary
 
-- **UNID** — Browser-scoped anonymous identifier minted by delegate (UUIDv8,
-  `unid` cookie). Level 0 evidence. Never contains PII.
+- **UNID** — Browser-scoped identifier minted by delegate (UUIDv8, `unid`
+  cookie). Stays on delegate. Never sent to a Domain. Never contains PII.
+- **Pseudonym** — This Domain's id for that browser. HMAC of the UNID and the
+  Domain under one delegate pepper. Stable for one browser on one Domain.
+  A second browser has a second Pseudonym. Another Domain receives a different
+  value. The JWT claim is `pseudonym`.
 - **User** — The authenticated person on delegate (today: a Firebase user,
-  `firebaseUid`). Owns one or more Profiles. Never exposed to Domains as an id.
-  Not core's warehouse `person_id`, and not an admin "user" on the engine9
-  server.
+  `firebaseUid`). Owns one or more Profiles. Not core's warehouse `person_id`,
+  and not an admin "user" on the engine9 server. The Firebase uid is omitted
+  from Identity Tokens except on an Engine9 API host Domain, where operator
+  accounts are keyed by it (`auth.firebase_uid`).
 - **Profile** — A persona the User chooses to present to a Domain. Stable
-  `profile_id`, optional display name and contact fields (each with a verified
-  flag). Every User has at least one Profile (created on first login). The
-  **Anonymous Profile** is the implicit UNID-only profile (Level 0).
+  `profile_id` on delegate, optional display name and contact fields (each
+  with a verified flag). Every User has at least one Profile (created on
+  first login). The delegate Profile id is not sent to a Domain. The
+  **Anonymous Profile** is Level 0: a Pseudonym, no Profile fields. Two
+  browsers that share one Profile with one Domain receive the same `sub`.
 - **Grant** — Remembered decision: share Profile P with Domain D at Level L
   (fields F). Keyed by (`profile_id`, `domain`). Created by the chooser;
   revocable.
@@ -31,11 +38,13 @@ product language in docs and APIs (except the JWT claim `aud`, which is RFC 7519
   check that name; `aud` equals the Domain string (not a full origin URL).
 - **Identity Level** (0–7) — Confidence ladder. Delegate implements 0–4;
   5–7 reserved. Levels are not authorization.
-- **Identity Token** — Delegate-signed JWT (ES256) asserting `unid`,
-  `profile`, `level`, `auth` for one `aud`. Short-lived. Verifiable via JWKS.
+- **Identity Token** — Delegate-signed JWT (ES256) asserting `pseudonym`,
+  `sub`, `profile`, `level`, `auth` for one `aud`. Short-lived. Verifiable
+  via JWKS. Does not contain the UNID or the delegate Profile id.
 - **Core Session** — Optional HMAC token a core Site mints after verifying an
-  Identity Token. Holds `personId`, `roles`, `unid`, `level`, `auth`. A cache
-  of verified identity plus Site-only facts. Never required for authentication.
+  Identity Token. Holds `personId`, `roles`, `pseudonym`, `level`, `auth`. A
+  cache of verified identity plus Site-only facts. Never required for
+  authentication.
 - **Role** — Core authorization (`role_id === segment_id`). Not an identity
   concept. Roles may require `minLevel` and/or `twoFactor`.
 - **Session Bridge** — HMAC carrier of Firebase tokens to engine9 API hosts
@@ -68,8 +77,11 @@ the current key is omitted.
 Identity Tokens are JSON Web Tokens. Issuance and verification follow:
 
 - **RFC 7519** — JWT. Header `typ` is `JWT`. Registered claims in use: `iss`,
-  `sub`, `aud`, `iat`, `exp`, `jti`. Other claims (`unid`, `level`, `profile`,
-  `auth`, `grant`, `nonce`) are private claims agreed by this protocol.
+  `sub`, `aud`, `iat`, `exp`, `jti`. Other claims (`pseudonym`, `level`,
+  `profile`, `auth`, `grant`, `nonce`) are private claims agreed by this
+  protocol. `profile` here is not the OpenID Connect `profile` claim (a
+  profile-page URL). It is the granted Delegate Profile fields, and it has
+  no `id`.
 - **RFC 7515** — compact JWS serialization.
 - **RFC 7518** — `alg` is `ES256` only (ECDSA using P-256 and SHA-256).
 - **RFC 7517** — public keys are a JWK Set (`{"keys":[...]}`) at the URL in
@@ -96,23 +108,35 @@ Claims:
 | Claim | Meaning |
 | ----- | ------- |
 | `iss` | Issuer, e.g. `https://delegate.engine9.ai` |
-| `sub` | `profile_id`, or `unid:<unid>` for the Anonymous Profile |
-| `aud` | Domain (`host` or `host:port`; product term is Domain) |
+| `sub` | Level 0: the Pseudonym. Level ≥ 1: this Domain's subject for the Profile (formula below). Same User, two browsers, one Domain → one `sub` |
+| `aud` | Domain (`host` or `host:port`; product term is Domain). Also the HMAC namespace |
 | `iat`, `exp` | Unix seconds. Default TTL 3600s |
 | `jti` | Unique token id |
 | `nonce` | Echo of client nonce when supplied |
-| `unid` | Browser UNID |
+| `pseudonym` | This Domain's Pseudonym. Lowercase hex, 64 characters. HMAC of the UNID and `aud` |
 | `level` | Integer 0–4 achieved for this token |
-| `profile` | Present when `level >= 1`. Fields filtered by Grant |
-| `auth` | `{ provider?, amr, auth_time?, two_factor }` |
+| `profile` | Present when `level >= 1`. Granted fields only. No `id` |
+| `auth` | `{ provider?, amr, auth_time?, two_factor, firebase_uid? }` |
 | `grant` | `{ id, granted_at, fields }` when a Grant exists |
 | `verified_claims` | Reserved for Levels 5–7 (OpenID IDA). Not emitted now |
 
-`profile` shape:
+Pseudonym and subject use one Worker secret, `UNID_PEPPER`. The Domain string
+(`aud`) is the namespace. There is no per-domain salt in the `domain` table,
+and minting a token does not read D1 or `DOMAINS_KV` to compute these values.
+Both values are lowercase hex (64 characters):
+
+```text
+pseudonym = hex(HMAC-SHA256(UNID_PEPPER, "pseudonym" ‖ 0x00 ‖ aud ‖ 0x00 ‖ unid))
+sub       = hex(HMAC-SHA256(UNID_PEPPER, "profile"   ‖ 0x00 ‖ aud ‖ 0x00 ‖ profile_id))
+```
+
+Level 0 sets `sub` to the Pseudonym. `0x00` is a single zero byte.
+
+`profile` shape (only fields named on the Grant; verified flags only with
+that contact):
 
 ```json
 {
-  "id": "<profile_id>",
   "display_name": "Alex",
   "given_name": "Alex",
   "family_name": "Rivera",
@@ -123,6 +147,11 @@ Claims:
   "attributes": {}
 }
 ```
+
+`auth.firebase_uid` is omitted. An Engine9 API host Domain
+(`*.engine9.io`, `data.*.engine9.ai`, `local.engine9.ai`, plus
+`SESSION_BRIDGE_SUFFIXES`) receives it, because operator accounts on that
+host are keyed by the Firebase uid.
 
 `amr` values: `pwd`, `otp`, `mfa`, `swk` (and Firebase provider strings as
 needed).
@@ -147,6 +176,8 @@ Rules:
 - `domainFromUrl(return_to)` must equal `domain`.
 - `domain` must pass `ALLOWED_DOMAINS` or be listed in the `domain` table
   with `allowed = 1`.
+- `return_to` on `/login`, `POST /auth/session`, `/identity/logout`, and
+  `/profile/bridge` uses that same allow rule.
 
 Behavior:
 
@@ -205,13 +236,15 @@ Human page: `GET /user` — manage Profiles and connected Domains.
 
 - `POST /auth/logout` — ends the User session on delegate (existing).
 - `GET /identity/logout?domain=&return_to=` — redirect-style logout so a Domain
-  can end the delegate session and return.
+  can end the delegate session and return. Redirects only when `return_to` is
+  on that `domain` and the domain is allowed (`ALLOWED_DOMAINS` or
+  `domain.allowed = 1`).
 
 ## Level assignment
 
 Implemented in delegate `src/lib/levels.ts`.
 
-- **0 Inferred** — UNID present, no Profile shared.
+- **0 Inferred** — Pseudonym present, no Profile shared. `sub` equals `pseudonym`.
 - **1 Provided** — Profile shared with at least one self-asserted field, none
   of those contacts verified.
 - **2 Contact Confirmed** — Shared Profile has `email_verified` or
@@ -232,7 +265,9 @@ interaction, `level_unavailable`.
 - Browser (`@engine9/id`): verify ES256 via JWKS, `iss`, `aud` = own Domain,
   `exp` (±60s skew), `nonce`. Safe for personalization and step-up. Cannot
   learn `person_id` or Roles.
-- Core Site: same JWT verification (no shared secret). Maps `unid` /
-  `profile_id` → `person_id`, loads Roles, optionally mints a Core Session.
+- Core Site: same JWT verification (no shared secret). Maps `pseudonym` and,
+  when a Profile is shared, `sub` → `person_id`, loads Roles, optionally
+  mints a Core Session. Two browsers with the same `sub` are the same person
+  on that Domain.
 - Delegate: verifies Firebase ID tokens; assigns Levels; stores Profiles and
   Grants; signs Identity Tokens.

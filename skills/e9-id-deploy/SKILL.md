@@ -79,7 +79,7 @@ Redirect mode: send the user to `/identity/authorize` and call
 import { describeLevel, meetsLevel } from "@engine9/id/levels";
 
 const ident = id.getIdentity();
-if (!ident || ident.level === 0) showAnonymous(ident?.unid);
+if (!ident || ident.level === 0) showAnonymous(ident?.pseudonym);
 else if (meetsLevel(ident, 3)) showTrusted(ident.profile);
 ```
 

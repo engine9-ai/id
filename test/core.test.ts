@@ -14,7 +14,7 @@ describe('createCoreClient', () => {
       return new Response(
         JSON.stringify({
           token: 'session-1',
-          session: { personId: 9, roles: [], unid: 'u-1', level: 1 },
+          session: { personId: 9, roles: [], pseudonym: 'u-1', level: 1 },
         }),
         { headers: { 'Content-Type': 'application/json' } },
       );

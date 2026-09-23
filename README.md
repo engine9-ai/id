@@ -65,7 +65,7 @@ if (!id.getIdentity()) {
 ### With `@engine9/core`
 
 After the browser holds an Identity Token, `id.core.login()` posts it to the
-Site's core API with an `e9publickey_` key. Core maps `unid` / `profile_id` to
+Site's core API with an `e9publickey_` key. Core maps `pseudonym` / `sub` to
 `person_id` and Roles. See [docs/with-core.md](./docs/with-core.md).
 
 ```js
@@ -92,7 +92,7 @@ use another issuer that returns the same Identity shape — this is **not** OIDC
 
 | Method | What it does |
 | ------ | ------------ |
-| `getUnid()` | Cached `identity.unid`, else stored `delegate_unid` |
+| `getPseudonym()` | Cached `identity.pseudonym`, else stored `delegate_pseudonym` |
 | `getIdentity()` | Verified, unexpired token payload, or `null` |
 | `requestIdentity({ minLevel, maxLevel?, fields?, prompt?, mode, returnTo?, responseMode? })` | Redirect assigns `location` to `/identity/authorize`. Popup opens `/identity/bridge` and listens for `postMessage` type `delegate-identity` |
 | `handleCallback()` | Parse `#delegate_token` or `?delegate_token` + `state`, verify, store, `history.replaceState` |

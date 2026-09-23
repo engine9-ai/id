@@ -89,12 +89,12 @@ function issuerMatches(iss: unknown, issuer: string): boolean {
 }
 
 function asIdentity(payload: Record<string, unknown>): Identity {
-  const unid = payload.unid;
+  const pseudonym = payload.pseudonym;
   const level = payload.level;
   const sub = payload.sub;
   const exp = payload.exp;
-  if (typeof unid !== 'string' || !unid) {
-    throw new DelegateIdentityError('invalid_token', 'Identity Token is missing unid');
+  if (typeof pseudonym !== 'string' || !pseudonym) {
+    throw new DelegateIdentityError('invalid_token', 'Identity Token is missing pseudonym');
   }
   if (typeof level !== 'number' || !Number.isFinite(level)) {
     throw new DelegateIdentityError('invalid_token', 'Identity Token is missing level');

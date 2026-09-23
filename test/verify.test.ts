@@ -13,14 +13,14 @@ import {
 describe('verifyIdentityToken', () => {
   it('verifies an ES256 Identity Token', async () => {
     const keys = await createTestKeys();
-    const token = await signIdentityToken(keys, { unid: 'u-42', level: 2 });
+    const token = await signIdentityToken(keys, { pseudonym: 'u-42', level: 2 });
     const identity = await verifyIdentityToken({
       token,
       jwks: { keys: [keys.jwk] },
       domain: DOMAIN,
       issuer: ISSUER,
     });
-    expect(identity.unid).toBe('u-42');
+    expect(identity.pseudonym).toBe('u-42');
     expect(identity.level).toBe(2);
     expect(identity.aud).toBe(DOMAIN);
     expect(identity.iss).toBe(ISSUER);

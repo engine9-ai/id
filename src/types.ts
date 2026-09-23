@@ -14,7 +14,8 @@ export type FetchImpl = (
 ) => Promise<Response>;
 
 export interface IdentityProfile {
-  id: string;
+  /** Absent on Identity Tokens. Present on delegate's own Profile API. */
+  id?: string;
   display_name?: string;
   given_name?: string;
   family_name?: string;
@@ -30,6 +31,8 @@ export interface IdentityAuth {
   amr?: string[];
   auth_time?: number;
   two_factor?: boolean;
+  /** Engine9 API host Domains only. */
+  firebase_uid?: string;
 }
 
 export interface IdentityGrant {
@@ -40,7 +43,8 @@ export interface IdentityGrant {
 
 /** Verified Identity Token payload (protocol claims). */
 export interface Identity {
-  unid: string;
+  /** This Domain's Pseudonym for the browser. Not the delegate UNID. */
+  pseudonym: string;
   level: number;
   profile?: IdentityProfile;
   auth?: IdentityAuth;
@@ -160,7 +164,7 @@ export interface DelegateConfiguration {
 export interface CoreSession {
   personId?: number;
   roles?: string[];
-  unid?: string;
+  pseudonym?: string;
   level?: number;
   profileId?: string;
   profile?: IdentityProfile;
@@ -182,7 +186,7 @@ export interface CoreClient {
 }
 
 export interface Engine9Id {
-  getUnid(): Promise<string>;
+  getPseudonym(): Promise<string>;
   getIdentity(): Identity | null;
   requestIdentity(opts: RequestIdentityOptions): Promise<Identity | void>;
   handleCallback(): Promise<Identity | null>;

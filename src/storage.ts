@@ -2,7 +2,7 @@ import type { StorageKind } from './types';
 
 export const STORAGE_KEYS = {
   token: 'delegate_token',
-  unid: 'delegate_unid',
+  pseudonym: 'delegate_pseudonym',
   identity: 'delegate_identity',
   nonce: 'delegate_nonce',
   state: 'delegate_state',

@@ -47,7 +47,7 @@ function readStoredIdentity(raw: string | null): Identity | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as Identity;
-    if (!parsed || typeof parsed.unid !== 'string') return null;
+    if (!parsed || typeof parsed.pseudonym !== 'string') return null;
     if (!isUnexpired(parsed)) return null;
     return parsed;
   } catch {
@@ -87,7 +87,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
   const persist = (identity: Identity, token: string): void => {
     storage.set(STORAGE_KEYS.token, token);
     storage.set(STORAGE_KEYS.identity, JSON.stringify(identity));
-    storage.set(STORAGE_KEYS.unid, identity.unid);
+    storage.set(STORAGE_KEYS.pseudonym, identity.pseudonym);
     notify(identity);
   };
 
@@ -275,14 +275,14 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     : undefined;
 
   return {
-    async getUnid(): Promise<string> {
+    async getPseudonym(): Promise<string> {
       const identity = getIdentity();
-      if (identity?.unid) return identity.unid;
-      const stored = storage.get(STORAGE_KEYS.unid);
+      if (identity?.pseudonym) return identity.pseudonym;
+      const stored = storage.get(STORAGE_KEYS.pseudonym);
       if (stored) return stored;
       throw new DelegateIdentityError(
         'login_required',
-        'No UNID available. Call requestIdentity() first.',
+        'No Pseudonym available. Call requestIdentity() first.',
       );
     },
     getIdentity,

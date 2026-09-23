@@ -72,7 +72,7 @@ any other runtime dependency, to the published library.
 - Popup messages: `type === 'delegate-identity'` and `event.origin` must be
   the delegate origin.
 - Clock skew on `exp` / `iat` is 60 seconds.
-- Default storage keys include `delegate_token` and `delegate_unid`.
+- Default storage keys include `delegate_token` and `delegate_pseudonym`.
 
 ## Before finishing
 

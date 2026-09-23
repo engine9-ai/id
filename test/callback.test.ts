@@ -38,7 +38,7 @@ describe('handleCallback', () => {
 
   it('verifies a hash callback, stores identity, and cleans the URL', async () => {
     const keys = await createTestKeys();
-    const token = await signIdentityToken(keys, { unid: 'hash-unid', level: 1 });
+    const token = await signIdentityToken(keys, { pseudonym: 'hash-unid', level: 1 });
     setPageUrl(`/return#delegate_token=${token}&state=st`);
     const replace = vi.spyOn(window.history, 'replaceState');
 
@@ -49,9 +49,9 @@ describe('handleCallback', () => {
       fetchImpl: mockDelegateFetch(keys.jwk),
     });
     const identity = await id.handleCallback();
-    expect(identity?.unid).toBe('hash-unid');
-    expect(id.getIdentity()?.unid).toBe('hash-unid');
-    expect(await id.getUnid()).toBe('hash-unid');
+    expect(identity?.pseudonym).toBe('hash-unid');
+    expect(id.getIdentity()?.pseudonym).toBe('hash-unid');
+    expect(await id.getPseudonym()).toBe('hash-unid');
     expect(replace).toHaveBeenCalled();
     const cleaned = replace.mock.calls.at(-1)?.[2];
     expect(String(cleaned)).not.toContain('delegate_token');
@@ -59,7 +59,7 @@ describe('handleCallback', () => {
 
   it('verifies a query callback', async () => {
     const keys = await createTestKeys();
-    const token = await signIdentityToken(keys, { unid: 'query-unid', level: 0 });
+    const token = await signIdentityToken(keys, { pseudonym: 'query-unid', level: 0 });
     setPageUrl(`/auth/delegate?delegate_token=${token}&state=st`);
 
     const id = createEngine9Id({
@@ -69,7 +69,7 @@ describe('handleCallback', () => {
       fetchImpl: mockDelegateFetch(keys.jwk),
     });
     const identity = await id.handleCallback();
-    expect(identity?.unid).toBe('query-unid');
+    expect(identity?.pseudonym).toBe('query-unid');
     expect(id.level).toBe(0);
     expect(id.isAnonymous).toBe(true);
   });
