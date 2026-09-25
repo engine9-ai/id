@@ -1,7 +1,7 @@
 {
   "name": "@engine9/id",
-  "version": "1.2.1",
-  "description": "Browser client for engine9 identity: verify delegate Identity Tokens, request identity at a minimum level, and optionally talk to @engine9/core.",
+  "version": "1.3.0",
+  "description": "Browser client for engine9 identity: add a delegate login button and Level-based content gates to any website with one script tag, verify Identity Tokens, and optionally talk to @engine9/core.",
   "type": "module",
   "license": "MIT",
   "author": "Engine9",
@@ -23,6 +23,11 @@
       "types": "./dist/levels.d.ts",
       "import": "./dist/levels.js",
       "default": "./dist/levels.js"
+    },
+    "./content": {
+      "types": "./dist/content.d.ts",
+      "import": "./dist/content.js",
+      "default": "./dist/content.js"
     },
     "./core": {
       "types": "./dist/core.d.ts",

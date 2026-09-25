@@ -32,16 +32,17 @@ export async function signIdentityToken(
   } = {},
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
+  const aud = options.aud ?? DOMAIN;
   const payload = {
-    pseudonym: 'pseudonym-1',
+    domain_profile: `${aud}:anonymous`,
     level: 0,
     ...claims,
   };
   let jwt = new SignJWT(payload)
     .setProtectedHeader({ alg: 'ES256', kid: keys.kid, typ: 'JWT' })
     .setIssuer(options.iss ?? ISSUER)
-    .setAudience(options.aud ?? DOMAIN)
-    .setSubject(options.sub ?? (typeof payload.sub === 'string' ? payload.sub : String(payload.pseudonym)))
+    .setAudience(aud)
+    .setSubject(options.sub ?? (typeof payload.sub === 'string' ? payload.sub : `${aud}:${'a'.repeat(64)}`))
     .setJti('jti-1');
   if (options.iat !== undefined) jwt = jwt.setIssuedAt(options.iat);
   else jwt = jwt.setIssuedAt(now);
@@ -52,7 +53,7 @@ export async function signIdentityToken(
 export function tamperToken(token: string): string {
   const [header, payload, signature] = token.split('.');
   const json = JSON.parse(Buffer.from(payload, 'base64url').toString());
-  json.pseudonym = 'tampered';
+  json.sub = `${DOMAIN}:tampered`;
   const next = Buffer.from(JSON.stringify(json)).toString('base64url');
   return `${header}.${next}.${signature}`;
 }

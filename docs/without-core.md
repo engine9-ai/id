@@ -37,7 +37,10 @@ First-time steps: [deploy.md](./deploy.md).
 
 ## Minimal flow
 
-1. Register the consumer Domain with delegate (`ALLOWED_RETURN_ORIGINS` or the
+The shortest version is `mount()` plus `data-e9-*` attributes; see the
+[README](../README.md#quick-start-about-ten-minutes). Step by step:
+
+1. Register the consumer Domain with delegate (`ALLOWED_DOMAINS` or the
    `domain` table).
 2. On load, `handleCallback()` in case the user is returning from authorize.
 3. On a user gesture, `requestIdentity({ minLevel, mode: "popup" })`.

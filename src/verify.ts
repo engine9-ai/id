@@ -88,19 +88,24 @@ function issuerMatches(iss: unknown, issuer: string): boolean {
   return iss.replace(/\/+$/, '') === issuer.replace(/\/+$/, '');
 }
 
-function asIdentity(payload: Record<string, unknown>): Identity {
-  const pseudonym = payload.pseudonym;
+function asIdentity(payload: Record<string, unknown>, domain: string): Identity {
   const level = payload.level;
   const sub = payload.sub;
   const exp = payload.exp;
-  if (typeof pseudonym !== 'string' || !pseudonym) {
-    throw new DelegateIdentityError('invalid_token', 'Identity Token is missing pseudonym');
+  const prefix = `${domain}:`;
+  if (typeof sub !== 'string' || !sub.startsWith(prefix) || sub.length === prefix.length) {
+    throw new DelegateIdentityError('invalid_token', 'Identity Token sub is not a Domain UNID for this domain');
+  }
+  if (typeof payload.domain_profile !== 'string' || !payload.domain_profile.startsWith(prefix)) {
+    throw new DelegateIdentityError('invalid_token', 'Identity Token is missing domain_profile');
+  }
+  if (payload.merged_from !== undefined) {
+    if (typeof payload.merged_from !== 'string' || !payload.merged_from.startsWith(prefix)) {
+      throw new DelegateIdentityError('invalid_token', 'Identity Token merged_from is not a Domain UNID for this domain');
+    }
   }
   if (typeof level !== 'number' || !Number.isFinite(level)) {
     throw new DelegateIdentityError('invalid_token', 'Identity Token is missing level');
-  }
-  if (typeof sub !== 'string' || !sub) {
-    throw new DelegateIdentityError('invalid_token', 'Identity Token is missing sub');
   }
   if (typeof exp !== 'number') {
     throw new DelegateIdentityError('invalid_token', 'Identity Token is missing exp');
@@ -180,5 +185,5 @@ export async function verifyIdentityToken(
     }
   }
 
-  return asIdentity(payload);
+  return asIdentity(payload, domain);
 }

@@ -6,48 +6,70 @@
     <title>@engine9/id — plain HTML</title>
     <style>
       body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 40rem; }
-      button { margin-right: 0.5rem; }
+      header { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1.5rem; }
+      header span { margin-left: auto; }
+      .paywall { border: 1px solid #ccc; padding: 1rem; background: #fafafa; }
       pre { background: #f4f4f4; padding: 1rem; overflow: auto; }
     </style>
   </head>
   <body>
-    <h1>engine9 identity (no core)</h1>
-    <p>Build the library first (<code>npm run build</code>), then open this file from a domain registered with delegate.</p>
-    <p>
-      <button id="identify">Identify (popup, min level 1)</button>
-      <button id="logout">Log out locally</button>
-    </p>
+    <header>
+      <button data-e9-login>Log in</button>
+      <button data-e9-logout hidden>Log out</button>
+      <span data-e9-min-level="1" hidden>
+        Hello, <b data-e9-profile="given_name">reader</b>
+        (Level <span data-e9-level></span>, <span data-e9-level="name"></span>)
+      </span>
+    </header>
+
+    <article>
+      <h1>engine9 identity, no server</h1>
+      <p>
+        Build the library first (<code>npm run build</code>), then serve this folder
+        from a Domain registered with delegate (for example
+        <code>npx serve -l 3000 .</code> from the repository root, then open
+        <code>http://localhost:3000/examples/plain-html/</code>).
+      </p>
+      <p>This paragraph is public. The rest of the article is gated at Level 1.</p>
+
+      <div class="paywall" data-e9-max-level="0">
+        <p>Log in to keep reading.</p>
+        <button data-e9-login data-e9-fields="given_name,email">Log in</button>
+      </div>
+
+      <div data-e9-min-level="1" hidden>
+        <p>You are reading the gated part of the article.</p>
+        <p data-e9-max-level="1">
+          Comments need a confirmed email (Level 2).
+          <button data-e9-login="2">Confirm</button>
+        </p>
+        <p data-e9-min-level="2" hidden>Comments would load here.</p>
+      </div>
+    </article>
+
+    <h2>Identity (debug)</h2>
     <pre id="out">loading…</pre>
+
     <script src="../../dist/id.iife.js"></script>
     <script>
-      const { createEngine9Id, describeLevel } = engine9Id;
-      const id = createEngine9Id();
+      const id = engine9Id.mount({
+        onError: (err) => {
+          console.warn(err);
+          document.getElementById('out').textContent = `error: ${err.code || err.message}`;
+        },
+      });
 
-      function render() {
-        const identity = id.getIdentity();
-        const level = describeLevel(id.level);
-        document.getElementById('out').textContent = JSON.stringify(
-          { level: level.name, isAnonymous: id.isAnonymous, identity },
-          null,
-          2,
-        );
-      }
-
-      id.onChange(render);
-
-      (async () => {
-        await id.handleCallback();
-        render();
-      })();
-
-      document.getElementById('identify').onclick = async () => {
-        await id.requestIdentity({ minLevel: 1, mode: 'popup' });
-        render();
-      };
-      document.getElementById('logout').onclick = () => {
-        id.logout();
-        render();
-      };
+      // A JavaScript gate alongside the data-e9-* attributes.
+      id.gate({
+        minLevel: 1,
+        onChange(allowed, identity) {
+          document.getElementById('out').textContent = JSON.stringify(
+            { allowed, level: id.level, isAnonymous: id.isAnonymous, identity },
+            null,
+            2,
+          );
+        },
+      });
     </script>
   </body>
 </html>

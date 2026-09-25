@@ -1,4 +1,5 @@
 import { createEngine9Id } from './client';
+import { mount, bindContent, gateFromElement, CONTENT_ATTRIBUTES } from './content';
 import {
   EMAIL_TYPES,
   PHONE_TYPES,
@@ -11,6 +12,7 @@ import {
   LEVELS,
   describeLevel,
   fieldsForLevel,
+  meetsGate,
   meetsLevel,
 } from './levels';
 import { createDelegateProvider } from './provider';
@@ -23,11 +25,16 @@ import {
 import { verifyIdentityToken } from './verify';
 
 const engine9Id = {
+  mount,
+  bindContent,
+  gateFromElement,
+  CONTENT_ATTRIBUTES,
   createEngine9Id,
   createDelegateProvider,
   LEVELS,
   describeLevel,
   meetsLevel,
+  meetsGate,
   fieldsForLevel,
   verifyIdentityToken,
   meetsRequiredAuth,

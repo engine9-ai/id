@@ -29,4 +29,14 @@ describe('listenForDelegateIdentity', () => {
     postMessage(DELEGATE, { type: 'delegate-identity', token: 'ok' });
     await expect(pending).resolves.toEqual({ token: 'ok', state: undefined });
   });
+
+  it('rejects with the delegate error code when the bridge reports one', async () => {
+    const pending = listenForDelegateIdentity({ expectedOrigin: DELEGATE });
+    postMessage('https://evil.example', { type: 'delegate-identity', error: 'access_denied' });
+    postMessage(DELEGATE, { type: 'delegate-identity', error: 'level_unavailable', state: 's' });
+    await expect(pending).rejects.toMatchObject({
+      name: 'DelegateIdentityError',
+      code: 'level_unavailable',
+    });
+  });
 });

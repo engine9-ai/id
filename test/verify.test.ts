@@ -13,14 +13,14 @@ import {
 describe('verifyIdentityToken', () => {
   it('verifies an ES256 Identity Token', async () => {
     const keys = await createTestKeys();
-    const token = await signIdentityToken(keys, { pseudonym: 'u-42', level: 2 });
+    const token = await signIdentityToken(keys, { sub: `${DOMAIN}:u-42`, level: 2 });
     const identity = await verifyIdentityToken({
       token,
       jwks: { keys: [keys.jwk] },
       domain: DOMAIN,
       issuer: ISSUER,
     });
-    expect(identity.pseudonym).toBe('u-42');
+    expect(identity.sub).toBe(`${DOMAIN}:u-42`);
     expect(identity.level).toBe(2);
     expect(identity.aud).toBe(DOMAIN);
     expect(identity.iss).toBe(ISSUER);
@@ -37,6 +37,19 @@ describe('verifyIdentityToken', () => {
         issuer: ISSUER,
       }),
     ).rejects.toThrow(/signature/i);
+  });
+
+  it('rejects a sub that is not a Domain UNID for this domain', async () => {
+    const keys = await createTestKeys();
+    const token = await signIdentityToken(keys, { sub: 'other.example:abc' });
+    await expect(
+      verifyIdentityToken({
+        token,
+        jwks: { keys: [keys.jwk] },
+        domain: DOMAIN,
+        issuer: ISSUER,
+      }),
+    ).rejects.toThrow(/Domain UNID/);
   });
 
   it('rejects the wrong domain (aud)', async () => {

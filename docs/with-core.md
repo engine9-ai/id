@@ -3,7 +3,8 @@
 Core is optional. When a Site embeds `@engine9/core`, the browser still
 obtains an Identity Token from an identity provider (default: **delegate**).
 The Site server verifies that token (JWKS, no shared secret required) and maps
-`pseudonym` / `sub` to a warehouse `person_id` plus **segment** Roles.
+the Domain UNID (`sub`, plus `merged_from` when present) to a warehouse
+`person_id` plus **segment** Roles.
 
 A **Core Session** is an optional HMAC cache of those Site-only facts. It is
 never required for authentication. Core routes accept either
@@ -21,15 +22,37 @@ Anything involving `person_id`, `person_segment` Roles, gated reads
 
 ## Client helpers
 
-`createEngine9Id({ core: { apiUrl, publicApiKey } })` exposes:
+`createEngine9Id({ core: { apiUrl, publicApiKey } })` — or
+`mount({ core: { apiUrl, publicApiKey } })` for the attribute-driven setup —
+exposes:
 
 - `id.core.login()` — `POST /auth/login` with the Identity Token and an
-  `e9publickey_` key (`public` scope).
+  `e9publickey_` key (`public` scope). Core replies `{ session, token }`.
 - `id.core.me()` — `GET /auth/me`
 - `id.core.changeRole(roleId)` — `POST /auth/role`
 - `id.core.fetch(path, init)` — adds the public key and session/token headers
 
-Create the public key with `e9 create-api-key --scopes public`.
+The public key is the `E9_PUBLIC_API_KEY` line that `npx e9core setup` writes
+to `.env` (`e9publickey_…`). It is safe in page JavaScript: it can add people
+and log in, nothing else.
+
+```html
+<script src="https://unpkg.com/@engine9/id@1/dist/id.iife.js"></script>
+<script>
+  const id = engine9Id.mount({
+    core: { apiUrl: '/api', publicApiKey: 'e9publickey_…' },
+  });
+  id.onChange(async (identity) => {
+    if (identity && identity.level >= 1) await id.core.login();
+  });
+</script>
+<button data-e9-login>Log in</button>
+<div data-e9-min-level="1" hidden>Logged-in content (soft gate)</div>
+```
+
+Core's `/api/auth/*` routes are on whenever the host has `SESSION_SECRET`
+(setup writes it). Core takes the JWT `aud` from the page `Origin` header, so
+no Domain configuration is needed when the pages and `/api` share a host.
 
 ## Roles and `minLevel`
 

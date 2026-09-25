@@ -11,23 +11,27 @@ product language in docs and APIs (except the JWT claim `aud`, which is RFC 7519
 
 ## Vocabulary
 
-- **UNID** — Browser-scoped identifier minted by delegate (UUIDv8, `unid`
-  cookie). Stays on delegate. Never sent to a Domain. Never contains PII.
-- **Pseudonym** — This Domain's id for that browser. HMAC of the UNID and the
-  Domain under one delegate pepper. Stable for one browser on one Domain.
-  A second browser has a second Pseudonym. Another Domain receives a different
-  value. The JWT claim is `pseudonym`.
+- **UNID** — The person's identifier on delegate (UUIDv8, `unid` cookie).
+  Minted per browser on first visit, then merged across browsers when the
+  person signs in (see [UNID merge](#unid-merge)). Stays on delegate. Never
+  sent to a Domain. Never contains PII.
+- **Domain UNID** — This Domain's id for the person: `aud ":" hex`, an HMAC
+  of the UNID under one delegate pepper. The JWT claim is `sub`. Stable on one
+  Domain; another Domain receives a different value. The Domain stores it to
+  recognize the person on return.
 - **User** — The authenticated person on delegate (today: a Firebase user,
   `firebaseUid`). Owns one or more Profiles. Not core's warehouse `person_id`,
-  and not an admin "user" on the engine9 server. The Firebase uid is omitted
-  from Identity Tokens except on an Engine9 API host Domain, where operator
-  accounts are keyed by it (`auth.firebase_uid`).
-- **Profile** — A persona the User chooses to present to a Domain. Stable
+  and not an admin "user" on the engine9 server. The Firebase uid is never
+  sent to a Domain.
+- **Profile** — A persona the person chooses to present to a Domain. Stable
   `profile_id` on delegate, optional display name and contact fields (each
   with a verified flag). Every User has at least one Profile (created on
-  first login). The delegate Profile id is not sent to a Domain. The
-  **Anonymous Profile** is Level 0: a Pseudonym, no Profile fields. Two
-  browsers that share one Profile with one Domain receive the same `sub`.
+  first login). The delegate Profile id is not sent to a Domain. Everyone,
+  signed in or not, also has the **Anonymous Profile**: Level 0, no fields.
+- **Domain Profile** — Which Profile is acting on this Domain:
+  `aud ":" hex` (an HMAC of the Profile id), or `aud ":anonymous"` for the
+  Anonymous Profile. The JWT claim is `domain_profile`. A Domain does not need
+  to store it; person identity is the Domain UNID.
 - **Grant** — Remembered decision: share Profile P with Domain D at Level L
   (fields F). Keyed by (`profile_id`, `domain`). Created by the chooser;
   revocable.
@@ -38,11 +42,13 @@ product language in docs and APIs (except the JWT claim `aud`, which is RFC 7519
   check that name; `aud` equals the Domain string (not a full origin URL).
 - **Identity Level** (0–7) — Confidence ladder. Delegate implements 0–4;
   5–7 reserved. Levels are not authorization.
-- **Identity Token** — Delegate-signed JWT (ES256) asserting `pseudonym`,
-  `sub`, `profile`, `level`, `auth` for one `aud`. Short-lived. Verifiable
-  via JWKS. Does not contain the UNID or the delegate Profile id.
+- **Identity Token** — Delegate-signed JWT (ES256) asserting `sub` (Domain
+  UNID), `domain_profile`, `profile`, `level`, `auth` for one `aud`.
+  Short-lived. Verifiable via JWKS. Does not contain the UNID or the delegate
+  Profile id.
 - **Core Session** — Optional HMAC token a core Site mints after verifying an
-  Identity Token. Holds `personId`, `roles`, `pseudonym`, `level`, `auth`. A
+  Identity Token. Holds `personId`, `roles`, `domainUnid`, `domainProfile`,
+  `level`, `auth`. A
   cache of verified identity plus Site-only facts. Never required for
   authentication.
 - **Role** — Core authorization (`role_id === segment_id`). Not an identity
@@ -77,8 +83,8 @@ the current key is omitted.
 Identity Tokens are JSON Web Tokens. Issuance and verification follow:
 
 - **RFC 7519** — JWT. Header `typ` is `JWT`. Registered claims in use: `iss`,
-  `sub`, `aud`, `iat`, `exp`, `jti`. Other claims (`pseudonym`, `level`,
-  `profile`, `auth`, `grant`, `nonce`) are private claims agreed by this
+  `sub`, `aud`, `iat`, `exp`, `jti`. Other claims (`domain_profile`,
+  `merged_from`, `level`, `profile`, `auth`, `grant`, `nonce`) are private claims agreed by this
   protocol. `profile` here is not the OpenID Connect `profile` claim (a
   profile-page URL). It is the granted Delegate Profile fields, and it has
   no `id`.
@@ -108,29 +114,31 @@ Claims:
 | Claim | Meaning |
 | ----- | ------- |
 | `iss` | Issuer, e.g. `https://delegate.engine9.ai` |
-| `sub` | Level 0: the Pseudonym. Level ≥ 1: this Domain's subject for the Profile (formula below). Same User, two browsers, one Domain → one `sub` |
+| `sub` | Domain UNID: `aud ":" hex` (formula below). Every token, every Level |
 | `aud` | Domain (`host` or `host:port`; product term is Domain). Also the HMAC namespace |
 | `iat`, `exp` | Unix seconds. Default TTL 3600s |
 | `jti` | Unique token id |
 | `nonce` | Echo of client nonce when supplied |
-| `pseudonym` | This Domain's Pseudonym. Lowercase hex, 64 characters. HMAC of the UNID and `aud` |
+| `domain_profile` | Domain Profile: `aud ":" hex`, or `aud ":anonymous"` for the Anonymous Profile |
+| `merged_from` | Optional. An earlier Domain UNID for the same person (see [UNID merge](#unid-merge)) |
 | `level` | Integer 0–4 achieved for this token |
 | `profile` | Present when `level >= 1`. Granted fields only. No `id` |
-| `auth` | `{ provider?, amr, auth_time?, two_factor, firebase_uid? }` |
+| `auth` | `{ provider?, amr, auth_time?, two_factor }` |
 | `grant` | `{ id, granted_at, fields }` when a Grant exists |
 | `verified_claims` | Reserved for Levels 5–7 (OpenID IDA). Not emitted now |
 
-Pseudonym and subject use one Worker secret, `UNID_PEPPER`. The Domain string
-(`aud`) is the namespace. There is no per-domain salt in the `domain` table,
-and minting a token does not read D1 or `DOMAINS_KV` to compute these values.
-Both values are lowercase hex (64 characters):
+Both ids use one Worker secret, `UNID_PEPPER`. The Domain string (`aud`) is
+the namespace and the prefix. There is no per-domain salt in the `domain`
+table, and minting a token does not read D1 or `DOMAINS_KV` to compute these
+values. The hex part is lowercase (64 characters):
 
 ```text
-pseudonym = hex(HMAC-SHA256(UNID_PEPPER, "pseudonym" ‖ 0x00 ‖ aud ‖ 0x00 ‖ unid))
-sub       = hex(HMAC-SHA256(UNID_PEPPER, "profile"   ‖ 0x00 ‖ aud ‖ 0x00 ‖ profile_id))
+sub            = aud ":" hex(HMAC-SHA256(UNID_PEPPER, "unid"    ‖ 0x00 ‖ aud ‖ 0x00 ‖ unid))
+domain_profile = aud ":" hex(HMAC-SHA256(UNID_PEPPER, "profile" ‖ 0x00 ‖ aud ‖ 0x00 ‖ profile_id))
 ```
 
-Level 0 sets `sub` to the Pseudonym. `0x00` is a single zero byte.
+`0x00` is a single zero byte. Verifiers reject a `sub` that does not start
+with `aud ":"`.
 
 `profile` shape (only fields named on the Grant; verified flags only with
 that contact):
@@ -148,13 +156,30 @@ that contact):
 }
 ```
 
-`auth.firebase_uid` is omitted. An Engine9 API host Domain
-(`*.engine9.io`, `data.*.engine9.ai`, `local.engine9.ai`, plus
-`SESSION_BRIDGE_SUFFIXES`) receives it, because operator accounts on that
-host are keyed by the Firebase uid.
+The Firebase uid is never on a token. An Engine9 API host keys operator
+accounts by the Domain UNID for its own Domain.
 
 `amr` values: `pwd`, `otp`, `mfa`, `swk` (and Firebase provider strings as
 needed).
+
+## UNID merge
+
+A new browser gets its own UNID. When the person signs in, delegate makes the
+UNID paired first to that Firebase user canonical:
+
+1. The Firebase user has no UNID yet: this browser's UNID becomes canonical.
+2. The Firebase user already has a canonical UNID and this browser's UNID is
+   unpaired: delegate rewrites the `unid` cookie to the canonical UNID and
+   keeps `unid_alias:<old>` → canonical for 90 days. The browser also gets a
+   `unid_merged` cookie naming the old UNID.
+3. This browser's UNID belongs to a different Firebase user (a shared
+   browser): the browser switches to the signed-in user's canonical UNID, or a
+   fresh one, with no merge.
+
+While the alias is live, each token for that browser carries
+`merged_from`: the Domain UNID the old UNID had on that Domain. A Domain links
+`merged_from` to the person it already knows under `sub`. Sending it again is
+harmless.
 
 ## Authorize (redirect)
 
@@ -213,6 +238,18 @@ On success, `postMessage` to `window.opener`:
 { "type": "delegate-identity", "token": "<jwt>", "state": "<state>" }
 ```
 
+On failure (`prompt=none` not satisfiable, the User chose a Profile below
+`min_level`, or the Profile is not theirs) the same message carries an error
+code instead of a token, then the popup closes:
+
+```json
+{ "type": "delegate-identity", "error": "level_unavailable", "state": "<state>" }
+```
+
+Codes are the same as the authorize `error=` codes. `@engine9/id` rejects
+`requestIdentity` with that code; a popup closed by the User without a
+message rejects with `access_denied`.
+
 `targetOrigin` is the Domain’s page origin (`return_to` origin). Then the popup closes.
 
 Deprecated alias: `GET /profile/bridge` still posts
@@ -244,7 +281,7 @@ Human page: `GET /user` — manage Profiles and connected Domains.
 
 Implemented in delegate `src/lib/levels.ts`.
 
-- **0 Inferred** — Pseudonym present, no Profile shared. `sub` equals `pseudonym`.
+- **0 Inferred** — Anonymous Profile. `domain_profile` is `aud ":anonymous"`, no `profile`.
 - **1 Provided** — Profile shared with at least one self-asserted field, none
   of those contacts verified.
 - **2 Contact Confirmed** — Shared Profile has `email_verified` or
@@ -265,9 +302,8 @@ interaction, `level_unavailable`.
 - Browser (`@engine9/id`): verify ES256 via JWKS, `iss`, `aud` = own Domain,
   `exp` (±60s skew), `nonce`. Safe for personalization and step-up. Cannot
   learn `person_id` or Roles.
-- Core Site: same JWT verification (no shared secret). Maps `pseudonym` and,
-  when a Profile is shared, `sub` → `person_id`, loads Roles, optionally
-  mints a Core Session. Two browsers with the same `sub` are the same person
-  on that Domain.
+- Core Site: same JWT verification (no shared secret). Maps `sub` (and
+  `merged_from`, when present) → `person_id`, loads Roles gated by `level`,
+  optionally mints a Core Session.
 - Delegate: verifies Firebase ID tokens; assigns Levels; stores Profiles and
   Grants; signs Identity Tokens.

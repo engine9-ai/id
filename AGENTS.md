@@ -27,14 +27,16 @@ authorize query params, callback names, or `postMessage` shape, update
 
 ## Vocabulary
 
-Use **User**, **Domain**, **Profile**, **Grant**, **UNID**, **Identity Level**,
-**Identity Token**, **Core Session**. Never “Account” or “Audience” in docs or
+Use **User**, **Domain**, **Profile**, **Grant**, **UNID**, **Domain UNID**,
+**Domain Profile**, **Identity Level**, **Identity Token**, **Core Session**. Never “Account” or “Audience” in docs or
 APIs. The JWT claim remains `aud`.
 
 ## Layout
 
 - `src/index.ts` — public ESM API (`createEngine9Id` and re-exports)
-- `src/levels.ts` — `@engine9/id/levels`
+- `src/content.ts` — `@engine9/id/content`: `mount()`, `bindContent()`,
+  `data-e9-*` soft content gates (README quick start)
+- `src/levels.ts` — `@engine9/id/levels` (incl. `meetsGate`)
 - `src/roles.ts` — `@engine9/id/roles` (declared roles / soft `requiredAuth`)
 - `src/forms.ts` — `@engine9/id/forms` (interface person field helpers)
 - `src/provider.ts` — pluggable IdentityProvider (Delegate default)
@@ -72,7 +74,7 @@ any other runtime dependency, to the published library.
 - Popup messages: `type === 'delegate-identity'` and `event.origin` must be
   the delegate origin.
 - Clock skew on `exp` / `iat` is 60 seconds.
-- Default storage keys include `delegate_token` and `delegate_pseudonym`.
+- Default storage keys include `delegate_token` and `delegate_domain_unid`.
 
 ## Before finishing
 

@@ -65,6 +65,30 @@ export function meetsLevel(
   return identity.level >= minLevel;
 }
 
+/**
+ * A soft content gate. All set conditions must hold:
+ * `minLevel` (identity.level >= n), `maxLevel` (identity.level <= n),
+ * `twoFactor` (identity.auth.two_factor). No identity counts as Level 0.
+ * Gates hide and show page content. They are not authorization.
+ */
+export interface ContentGate {
+  minLevel?: number;
+  maxLevel?: number;
+  twoFactor?: boolean;
+}
+
+export function meetsGate(
+  gate: ContentGate | null | undefined,
+  identity: { level?: number; auth?: { two_factor?: boolean } } | null | undefined,
+): boolean {
+  if (!gate) return true;
+  const level = typeof identity?.level === 'number' ? identity.level : 0;
+  if (typeof gate.minLevel === 'number' && level < gate.minLevel) return false;
+  if (typeof gate.maxLevel === 'number' && level > gate.maxLevel) return false;
+  if (gate.twoFactor === true && identity?.auth?.two_factor !== true) return false;
+  return true;
+}
+
 /** Profile field names a Grant at this level may include. */
 export function fieldsForLevel(level: number): string[] {
   if (level <= 0) return [];

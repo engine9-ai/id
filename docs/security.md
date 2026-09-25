@@ -14,7 +14,7 @@ The browser cannot learn core `person_id` or Roles.
 ## What a core Site server can trust
 
 The same JWT, verified the same way (or via `jose` + JWKS). Plus warehouse
-facts (`person_id`, Roles) after mapping `pseudonym` / `sub`.
+facts (`person_id`, Roles) after mapping the Domain UNID (`sub`).
 
 ## Threats and mitigations
 
@@ -30,8 +30,8 @@ facts (`person_id`, Roles) after mapping `pseudonym` / `sub`.
 - **Logout.** Clearing Site storage does not end the delegate User session.
   Call `/identity/logout` when the product should sign the User out of
   delegate as well.
-- **Level 0 Pseudonym.** This Domain's id for the browser, not a person.
-  Do not treat it as login. It is not the UNID.
+- **Level 0 Domain UNID.** Recognizes a returning person on this Domain, but
+  proves nothing about them. Do not treat it as login. It is not the UNID.
 - **Self-asserted email.** Level 1 `profile.email` is a claim the User typed.
   Do not merge it into warehouse identity until Level ≥ 2.
 

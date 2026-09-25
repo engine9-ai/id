@@ -43,13 +43,16 @@ export interface IdentityGrant {
 
 /** Verified Identity Token payload (protocol claims). */
 export interface Identity {
-  /** This Domain's Pseudonym for the browser. Not the delegate UNID. */
-  pseudonym: string;
+  /** Domain UNID (`domain:hex`): this person on this Domain. Not the delegate UNID. */
+  sub: string;
+  /** Domain Profile (`domain:hex`, or `domain:anonymous`): the Profile acting on this Domain. */
+  domain_profile: string;
+  /** Earlier Domain UNID for the same person, sent after Delegate merges a browser's UNID. */
+  merged_from?: string;
   level: number;
   profile?: IdentityProfile;
   auth?: IdentityAuth;
   grant?: IdentityGrant;
-  sub: string;
   exp: number;
   iss?: string;
   aud?: string | string[];
@@ -164,9 +167,9 @@ export interface DelegateConfiguration {
 export interface CoreSession {
   personId?: number;
   roles?: string[];
-  pseudonym?: string;
+  domainUnid?: string;
   level?: number;
-  profileId?: string;
+  domainProfile?: string;
   profile?: IdentityProfile;
   auth?: IdentityAuth;
   exp?: number;
@@ -185,14 +188,37 @@ export interface CoreClient {
   fetch(path: string, init?: RequestInit): Promise<Response>;
 }
 
+/**
+ * Soft content gate with hooks. `minLevel`, `maxLevel`, and `twoFactor` are
+ * the conditions (see `meetsGate`). One of `onAllow` / `onBlock` runs right
+ * away and again whenever the stored identity changes.
+ */
+export interface GateOptions {
+  minLevel?: number;
+  maxLevel?: number;
+  twoFactor?: boolean;
+  /** The visitor meets the gate. */
+  onAllow?: (identity: Identity | null) => void;
+  /** The visitor does not meet the gate (or has no identity). */
+  onBlock?: (identity: Identity | null) => void;
+  /** Runs on every evaluation with the result. */
+  onChange?: (allowed: boolean, identity: Identity | null) => void;
+}
+
 export interface Engine9Id {
-  getPseudonym(): Promise<string>;
+  getDomainUnid(): Promise<string>;
   getIdentity(): Identity | null;
   requestIdentity(opts: RequestIdentityOptions): Promise<Identity | void>;
   handleCallback(): Promise<Identity | null>;
   ensureLevel(n: number, opts?: EnsureLevelOptions): Promise<Identity | void>;
   logout(opts?: { delegate?: boolean }): void;
   onChange(cb: (identity: Identity | null) => void): () => void;
+  /**
+   * Show or block content by Identity Level. Evaluates now and on every
+   * identity change; returns an unsubscribe function. Soft only: anyone can
+   * edit the page. Never authorize privileged actions from a gate.
+   */
+  gate(opts: GateOptions): () => void;
   readonly level: number;
   readonly isAnonymous: boolean;
   readonly core?: CoreClient;

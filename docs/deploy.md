@@ -44,7 +44,7 @@ You need:
 2. That Domain **allowed on delegate**. There is no OAuth client id. The
    consumer _is_ its Domain.
    - Production: ask whoever runs delegate to allow the Domain
-     (`ALLOWED_RETURN_ORIGINS`, or a row in delegate’s `domain` table).
+     (`ALLOWED_DOMAINS`, or a row in delegate’s `domain` table).
    - Local: `http://localhost:3000`, `3001`, `3002`, and `3003` are already
      allowed on the public delegate.
 3. The page served over **http or https**, not opened as a file
@@ -57,10 +57,9 @@ You do **not** need a database, an API key, Cloudflare, or `@engine9/core`.
 **Plain HTML** (fastest):
 
 ```html
-<script src="https://unpkg.com/@engine9/id/dist/id.iife.js"></script>
-<script type="module">
-  const id = engine9Id.createEngine9Id();
-  await id.handleCallback();
+<script src="https://unpkg.com/@engine9/id@1/dist/id.iife.js"></script>
+<script>
+  const id = engine9Id.mount();
 </script>
 ```
 
@@ -71,57 +70,63 @@ npm install @engine9/id
 ```
 
 ```js
-import { createEngine9Id } from "@engine9/id";
+import { mount } from "@engine9/id";
 
-const id = createEngine9Id();
-await id.handleCallback();
+const id = mount();
 ```
 
-`handleCallback()` must run on the page people return to after login.
-Call it once when the page loads.
+`mount()` creates the client, finishes a login that is returning to this
+page, and keeps `data-e9-*` elements (Step 2 and 3) in sync. Call it once on
+every page that has a login button or gated content, in browser code.
 
 Delegate is the default identity provider. You only set `delegateUrl` if you
 are not using `https://delegate.engine9.ai`. Another provider is possible
 later; it must return the same identity shape. See
 [without-core.md](./without-core.md).
 
-## Step 2 — Ask for identity on a button click
+## Step 2 — Add a login button
 
-Login has to start from a click or keypress (browsers block popups otherwise).
+Login has to start from a click (browsers block popups otherwise). Any
+element with `data-e9-login` does that:
 
-```js
-document.querySelector("#continue").onclick = async () => {
-  await id.requestIdentity({
-    minLevel: 1,
-    mode: "popup",
-    fields: ["given_name", "family_name", "email"],
-  });
-};
+```html
+<button data-e9-login data-e9-fields="given_name,family_name,email">Log in</button>
+<button data-e9-logout hidden>Log out</button>
 ```
 
-| `minLevel` | What the visitor does                                 |
-| ---------- | ----------------------------------------------------- |
-| `0`        | Continue with a UNID only. No name or email           |
-| `1`        | They can type name and email. Nothing is verified yet |
+| Level asked   | What the visitor does                                          |
+| ------------- | -------------------------------------------------------------- |
+| `data-e9-login="0"` | Continue with a UNID only. No name or email              |
+| `data-e9-login` (1) | Pick a Profile to share name and email. Nothing verified yet |
+| `data-e9-login="2"` | Pick a Profile whose email or phone delegate has confirmed |
 
-`mode: 'redirect'` sends the whole window to delegate and back. Use it if
-popups are blocked. On the return page, `handleCallback()` reads the token.
+From JavaScript: `id.requestIdentity({ minLevel: 1, mode: "popup", fields })`.
+`mode: "redirect"` sends the whole window to delegate and back; popup mode
+falls back to it automatically when the popup is blocked.
 
 ## Step 3 — Show different content (soft)
 
 This does **not** protect a secret. Anyone can edit the page in devtools.
 It is for greetings, teasers, and “you’re signed in” layouts.
 
-```js
-const ident = id.getIdentity();
-const level = ident?.level ?? 0;
-
-if (level < 1) {
-  // Public copy + a button to continue
-} else {
-  // Use ident.profile.given_name, ident.profile.email
-}
+```html
+<div data-e9-max-level="0">Log in to keep reading.</div>
+<div data-e9-min-level="1" hidden>
+  Welcome, <span data-e9-profile="given_name">reader</span>. Full article…
+</div>
 ```
+
+Or with hooks:
+
+```js
+id.gate({
+  minLevel: 1,
+  onAllow: (identity) => article.classList.remove("locked"),
+  onBlock: () => article.classList.add("locked"),
+});
+```
+
+Every attribute and hook is listed in the [README](../README.md#content-gates-in-html).
 
 For “Activists at Level 1 see this section”, define a **declared role** on
 the page. Full pattern: [declared-roles.md](./declared-roles.md). The

@@ -1,10 +1,12 @@
 export { createEngine9Id } from './client';
+export { mount, bindContent, gateFromElement, CONTENT_ATTRIBUTES } from './content';
 export { createCoreClient } from './core';
 export { verifyIdentityToken, CLOCK_SKEW_SECONDS, decodeJwt } from './verify';
 export {
   LEVELS,
   describeLevel,
   meetsLevel,
+  meetsGate,
   fieldsForLevel,
 } from './levels';
 export {
@@ -44,6 +46,7 @@ export type {
   Engine9IdProvider,
   EnsureLevelOptions,
   FetchImpl,
+  GateOptions,
   Identity,
   IdentityAuth,
   IdentityGrant,
@@ -56,7 +59,13 @@ export type {
   ResponseMode,
   StorageKind,
 } from './types';
-export type { LevelDescription } from './levels';
+export type { ContentGate, LevelDescription } from './levels';
+export type {
+  BindContentOptions,
+  ContentBinding,
+  MountOptions,
+  MountedEngine9Id,
+} from './content';
 export type {
   RequiredAuth,
   DeclaredRole,

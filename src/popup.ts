@@ -13,13 +13,17 @@ export interface ListenForIdentityOptions {
   signal?: AbortSignal;
 }
 
-function isIdentityMessage(data: unknown): data is { type: string; token?: string; state?: string } {
+function isIdentityMessage(
+  data: unknown,
+): data is { type: string; token?: string; state?: string; error?: string } {
   return Boolean(data && typeof data === 'object' && 'type' in data);
 }
 
 /**
  * Resolve when `window` receives `{ type: "delegate-identity", token }`
  * from `expectedOrigin` (the delegate origin). Other origins are ignored.
+ * Reject with the delegate error code when the message carries
+ * `{ type: "delegate-identity", error }` instead of a token.
  */
 export function listenForDelegateIdentity(
   opts: ListenForIdentityOptions,
@@ -46,7 +50,18 @@ export function listenForDelegateIdentity(
       if (popup && event.source && event.source !== popup) return;
       if (!isIdentityMessage(event.data)) return;
       if (event.data.type !== DELEGATE_IDENTITY_MESSAGE) return;
-      if (typeof event.data.token !== 'string' || !event.data.token) return;
+      if (typeof event.data.token !== 'string' || !event.data.token) {
+        if (typeof event.data.error === 'string' && event.data.error) {
+          cleanup();
+          reject(
+            new DelegateIdentityError(
+              event.data.error,
+              `Delegate returned ${event.data.error}`,
+            ),
+          );
+        }
+        return;
+      }
       cleanup();
       resolve({
         token: event.data.token,

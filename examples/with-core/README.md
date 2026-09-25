@@ -1,7 +1,7 @@
 # Example: `@engine9/id` with `@engine9/core`
 
 The browser still obtains an Identity Token from delegate. Core (on the Site
-server) verifies that token and maps `pseudonym` / `sub` to `person_id` plus
+server) verifies that token and maps the Domain UNID (`sub`) to `person_id` plus
 Roles. A Core Session is an optional cache of those Site-only facts.
 
 ## 1. Public API key

@@ -1,6 +1,6 @@
 import { createCoreClient } from './core';
 import { DelegateIdentityError } from './errors';
-import { meetsLevel } from './levels';
+import { meetsGate, meetsLevel } from './levels';
 import { openIdentityPopup } from './popup';
 import { createDelegateProvider } from './provider';
 import { randomId } from './random';
@@ -11,6 +11,7 @@ import type {
   Engine9IdProvider,
   EnsureLevelOptions,
   FetchImpl,
+  GateOptions,
   Identity,
   RequestIdentityOptions,
 } from './types';
@@ -47,7 +48,7 @@ function readStoredIdentity(raw: string | null): Identity | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as Identity;
-    if (!parsed || typeof parsed.pseudonym !== 'string') return null;
+    if (!parsed || typeof parsed.sub !== 'string') return null;
     if (!isUnexpired(parsed)) return null;
     return parsed;
   } catch {
@@ -87,7 +88,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
   const persist = (identity: Identity, token: string): void => {
     storage.set(STORAGE_KEYS.token, token);
     storage.set(STORAGE_KEYS.identity, JSON.stringify(identity));
-    storage.set(STORAGE_KEYS.pseudonym, identity.pseudonym);
+    storage.set(STORAGE_KEYS.domainUnid, identity.sub);
     notify(identity);
   };
 
@@ -275,14 +276,14 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     : undefined;
 
   return {
-    async getPseudonym(): Promise<string> {
+    async getDomainUnid(): Promise<string> {
       const identity = getIdentity();
-      if (identity?.pseudonym) return identity.pseudonym;
-      const stored = storage.get(STORAGE_KEYS.pseudonym);
+      if (identity?.sub) return identity.sub;
+      const stored = storage.get(STORAGE_KEYS.domainUnid);
       if (stored) return stored;
       throw new DelegateIdentityError(
         'login_required',
-        'No Pseudonym available. Call requestIdentity() first.',
+        'No Domain UNID available. Call requestIdentity() first.',
       );
     },
     getIdentity,
@@ -294,6 +295,19 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       listeners.add(cb);
       return () => {
         listeners.delete(cb);
+      };
+    },
+    gate(opts: GateOptions) {
+      const evaluate = (identity: Identity | null): void => {
+        const allowed = meetsGate(opts, identity);
+        if (allowed) opts.onAllow?.(identity);
+        else opts.onBlock?.(identity);
+        opts.onChange?.(allowed, identity);
+      };
+      evaluate(getIdentity());
+      listeners.add(evaluate);
+      return () => {
+        listeners.delete(evaluate);
       };
     },
     get level() {

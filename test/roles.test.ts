@@ -8,11 +8,11 @@ import {
 } from '../src/roles';
 import type { Identity } from '../src/types';
 
-function identity(partial: Partial<Identity> & { pseudonym?: string }): Identity {
+function identity(partial: Partial<Identity>): Identity {
   return {
-    pseudonym: partial.pseudonym ?? 'u1',
+    sub: partial.sub ?? 'site.example:u1',
+    domain_profile: partial.domain_profile ?? 'site.example:anonymous',
     level: partial.level ?? 0,
-    sub: partial.sub ?? 'u1',
     exp: partial.exp ?? Math.floor(Date.now() / 1000) + 3600,
     profile: partial.profile,
     auth: partial.auth,

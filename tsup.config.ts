@@ -4,6 +4,7 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
     levels: 'src/levels.ts',
+    content: 'src/content.ts',
     core: 'src/core.ts',
     roles: 'src/roles.ts',
     forms: 'src/forms.ts',

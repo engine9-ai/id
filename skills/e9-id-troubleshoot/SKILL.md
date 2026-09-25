@@ -16,7 +16,7 @@ returns null, retry with `mode: "redirect"`.
 
 ## `error=invalid_domain`
 
-The consumer Domain is not on `ALLOWED_RETURN_ORIGINS` and not in the `domain`
+The consumer Domain is not on `ALLOWED_DOMAINS` and not in the `domain`
 table. `domainFromUrl(return_to)` must equal `domain=`.
 
 ## `error=interaction_required` / `login_required`
