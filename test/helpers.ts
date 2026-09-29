@@ -34,7 +34,6 @@ export async function signIdentityToken(
   const now = Math.floor(Date.now() / 1000);
   const aud = options.aud ?? DOMAIN;
   const payload = {
-    domain_profile: `${aud}:anonymous`,
     level: 0,
     ...claims,
   };

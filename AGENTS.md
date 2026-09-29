@@ -27,8 +27,8 @@ authorize query params, callback names, or `postMessage` shape, update
 
 ## Vocabulary
 
-Use **User**, **Domain**, **Profile**, **Grant**, **UNID**, **Domain UNID**,
-**Domain Profile**, **Identity Level**, **Identity Token**, **Core Session**. Never “Account” or “Audience” in docs or
+Use **User**, **Domain**, **Grant**, **UNID**, **Domain UNID**,
+**Identity Level**, **Identity Token**, **Core Session**. Never “Account” or “Audience” in docs or
 APIs. The JWT claim remains `aud`.
 
 ## Layout

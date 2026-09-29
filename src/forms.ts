@@ -17,7 +17,7 @@ export type PhoneType = (typeof PHONE_TYPES)[number];
 
 /**
  * Form / inbound people fields aligned with interfaces + core POST /people.
- * Profile token fields (`display_name`) are optional display-only extras.
+ * Token fields (`display_name`) are optional display-only extras.
  */
 export const PERSON_FORM_FIELDS = [
   'given_name',
@@ -114,7 +114,7 @@ export function normalizePersonPayload(
   return payload;
 }
 
-/** Profile field names to request from delegate for a Level 1 Grant. */
+/** Field names to request from delegate for a Level 1 Grant. */
 export function identityFieldsFromPersonPayload(
   payload: PersonPayload,
 ): string[] {

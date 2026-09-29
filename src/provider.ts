@@ -24,6 +24,7 @@ export interface BuildAuthorizeOptions {
   minLevel?: number;
   maxLevel?: number;
   fields?: string[];
+  optionalFields?: string[];
   prompt?: Prompt;
   nonce?: string;
   state?: string;
@@ -35,6 +36,7 @@ export interface BuildBridgeOptions {
   minLevel?: number;
   maxLevel?: number;
   fields?: string[];
+  optionalFields?: string[];
   prompt?: Prompt;
   nonce?: string;
   state?: string;
@@ -52,7 +54,7 @@ export interface VerifyTokenOptions {
 
 /**
  * Pluggable identity provider. Delegate is the default; custom providers must
- * produce the normalized Identity shape (levels, profile field names).
+ * produce the normalized Identity shape (levels, shared field names).
  * This is not OIDC — do not invent OpenID Connect discovery or id_token aliases.
  */
 export interface IdentityProvider {
@@ -102,6 +104,7 @@ export function createDelegateProvider(
         minLevel: opts.minLevel,
         maxLevel: opts.maxLevel,
         fields: opts.fields,
+        optionalFields: opts.optionalFields,
         prompt: opts.prompt,
         nonce: opts.nonce,
         state: opts.state,
@@ -118,6 +121,7 @@ export function createDelegateProvider(
         minLevel: opts.minLevel,
         maxLevel: opts.maxLevel,
         fields: opts.fields,
+        optionalFields: opts.optionalFields,
         prompt: opts.prompt,
         nonce: opts.nonce,
         state: opts.state,

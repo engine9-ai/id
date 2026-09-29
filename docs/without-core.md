@@ -15,7 +15,7 @@ First-time steps: [deploy.md](./deploy.md).
 - Obtain a UNID (Level 0) and know whether this browser already has a delegate
   User session.
 - Request identity at a minimum Identity Level; receive and verify a token.
-- Read Profile fields the User consented to share (Levels 1–4).
+- Read fields the User consented to share (Levels 1–4).
 - Store the token (sessionStorage by default), refresh with `prompt=none`,
   log out locally.
 - Declare **page-local roles** with `requiredAuth.minLevel` and soft-show
@@ -49,5 +49,5 @@ The shortest version is `mount()` plus `data-e9-*` attributes; see the
    `visibleContent` for soft sections.
 6. When the token is near expiry, `ensureLevel(n)` (silent, then interactive).
 
-Level 0 is always available: a UNID with no Profile shared. Use it for
+Level 0 is always available: a UNID with no fields shared. Use it for
 anonymous analytics and “continue as anonymous” affordances.

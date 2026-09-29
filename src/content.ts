@@ -29,12 +29,14 @@ export const CONTENT_ATTRIBUTES = {
   login: 'data-e9-login',
   /** Click clears the stored identity. Value `delegate` also ends the delegate session. */
   logout: 'data-e9-logout',
-  /** Comma-separated Profile fields a login button requests. */
+  /** Comma-separated required fields a login button requests. */
   fields: 'data-e9-fields',
-  /** `prompt` a login button sends (`select` forces the Profile chooser). */
+  /** Comma-separated optional fields a login button requests. */
+  optionalFields: 'data-e9-optional-fields',
+  /** `prompt` a login button sends (`select` forces the consent page). */
   prompt: 'data-e9-prompt',
-  /** Replace text with a Profile field (`given_name`, `email`, …). */
-  profile: 'data-e9-profile',
+  /** Replace text with a shared field (`given_name`, `email`, …). */
+  field: 'data-e9-field',
   /** Replace text with the Level number, or its name when the value is `name`. */
   level: 'data-e9-level',
   /** Written by the library: `allowed` or `blocked`. Useful for CSS. */
@@ -52,8 +54,10 @@ export interface BindContentOptions {
   root?: Document | Element;
   /** Level a bare `data-e9-login` asks for. Default `1`. */
   minLevel?: number;
-  /** Profile fields a login button requests when it has no `data-e9-fields`. */
+  /** Required fields a login button requests when it has no `data-e9-fields`. */
   fields?: string[];
+  /** Optional fields a login button requests when it has no `data-e9-optional-fields`. */
+  optionalFields?: string[];
   /** `popup` (default) or `redirect`. Popup falls back to redirect when blocked. */
   mode?: IdentityMode;
   /** Default `prompt` for login buttons. */
@@ -153,10 +157,10 @@ export function bindContent(
       setVisible(el, !id.isAnonymous);
     }
 
-    for (const el of Array.from(root.querySelectorAll(`[${CONTENT_ATTRIBUTES.profile}]`))) {
-      const field = el.getAttribute(CONTENT_ATTRIBUTES.profile) ?? '';
+    for (const el of Array.from(root.querySelectorAll(`[${CONTENT_ATTRIBUTES.field}]`))) {
+      const field = el.getAttribute(CONTENT_ATTRIBUTES.field) ?? '';
       if (!originalText.has(el)) originalText.set(el, el.textContent ?? '');
-      const value = (identity?.profile as Record<string, unknown> | undefined)?.[field];
+      const value = (identity?.fields as Record<string, unknown> | undefined)?.[field];
       el.textContent =
         typeof value === 'string' || typeof value === 'number'
           ? String(value)
@@ -182,10 +186,13 @@ export function bindContent(
       const minLevel =
         parseLevel(loginEl.getAttribute(CONTENT_ATTRIBUTES.login)) ?? options.minLevel ?? 1;
       const fields = parseFields(loginEl.getAttribute(CONTENT_ATTRIBUTES.fields)) ?? options.fields;
+      const optionalFields =
+        parseFields(loginEl.getAttribute(CONTENT_ATTRIBUTES.optionalFields)) ?? options.optionalFields;
       const prompt = parsePrompt(loginEl.getAttribute(CONTENT_ATTRIBUTES.prompt)) ?? options.prompt;
       id.requestIdentity({
         minLevel,
         fields,
+        optionalFields,
         prompt,
         mode: options.mode ?? 'popup',
       }).catch(onError);
@@ -237,9 +244,9 @@ export interface MountedEngine9Id extends Engine9Id {
  * login carries across tabs until the token expires.
  */
 export function mount(options: MountOptions = {}): MountedEngine9Id {
-  const { root, minLevel, fields, mode, prompt, onError, ...config } = options;
+  const { root, minLevel, fields, optionalFields, mode, prompt, onError, ...config } = options;
   const id = createEngine9Id({ storage: 'local', ...config });
-  const binding = bindContent(id, { root, minLevel, fields, mode, prompt, onError });
+  const binding = bindContent(id, { root, minLevel, fields, optionalFields, mode, prompt, onError });
   const report = onError ?? defaultOnError;
 
   const ready = id

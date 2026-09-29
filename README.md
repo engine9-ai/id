@@ -4,7 +4,7 @@ Add a **Log in** button and Level-based content gates to any website with one
 script tag. No server code, no database, no framework required.
 
 `@engine9/id` is the browser client for engine9 identity. Visitors log in
-through [delegate](https://delegate.engine9.ai), pick which **Profile** to
+through [delegate](https://delegate.engine9.ai), choose which **fields** to
 share with your website, and come back with a signed **Identity Token**. The
 library verifies that token in the browser and then shows or hides parts of
 your page based on the visitor's **Identity Level** (0–4).
@@ -70,7 +70,7 @@ Run it in browser code only (not during server rendering).
   <button data-e9-login>Log in</button>
   <button data-e9-logout hidden>Log out</button>
   <span data-e9-min-level="1" hidden>
-    Hello, <span data-e9-profile="given_name">reader</span>
+    Hello, <span data-e9-field="given_name">reader</span>
   </span>
 </header>
 
@@ -84,7 +84,7 @@ Run it in browser code only (not during server rendering).
     <button data-e9-login>Log in</button>
   </div>
 
-  <!-- Shown once the visitor has shared a Profile (Level 1 or higher) -->
+  <!-- Shown once the visitor has shared fields (Level 1 or higher) -->
   <div data-e9-min-level="1" hidden>
     <p>The plan adds three bus rapid transit lines by 2029…</p>
     <p>…rest of the article…</p>
@@ -99,8 +99,8 @@ That is the whole integration. Serve the page over `http://` or `https://`
 
 1. A delegate window opens. First-time visitors sign in to delegate (Google
    or email). Returning visitors are already signed in.
-2. Delegate shows the visitor's Profiles and asks which one to share with
-   your Domain, and which fields (name, email). They pick one and continue.
+2. Delegate asks which fields (name, email) to share with your Domain.
+   Required fields are part of logging in; optional fields are checkboxes.
    Delegate remembers that choice as a **Grant**, so the next login on your
    Domain is instant.
 3. The window closes. Your page updates: gated content appears, the login
@@ -122,7 +122,7 @@ Put these attributes on any element. The library toggles the element's
 | `data-e9-max-level="N"`          | the visitor's Level is `N` or lower (teasers, paywall prompts)  |
 | `data-e9-two-factor`             | the visitor signed in with a second factor                      |
 | `data-e9-login`                  | the visitor is **below** the button's Level (default 1)         |
-| `data-e9-logout`                 | the visitor has shared a Profile                                |
+| `data-e9-logout`                 | the visitor is signed in (Level 1 or higher)                    |
 
 Combine `min` and `max` for a band: `data-e9-min-level="1" data-e9-max-level="2"`.
 No identity counts as Level 0.
@@ -134,17 +134,18 @@ Buttons and text:
 
 | Attribute                              | What it does                                                                 |
 | -------------------------------------- | ---------------------------------------------------------------------------- |
-| `data-e9-login`                        | Click opens the delegate chooser asking for Level 1                          |
+| `data-e9-login`                        | Click opens delegate asking for Level 1                                       |
 | `data-e9-login="2"`                    | Same, asking for Level 2 (visitor must confirm an email or phone)            |
-| `data-e9-fields="given_name,email"`    | Profile fields the button requests. Default: `display_name`, `email`         |
-| `data-e9-prompt="select"`              | Always show the Profile chooser (lets a visitor switch Profiles)             |
+| `data-e9-fields="given_name,email"`    | Required fields the button requests. Default: `display_name`, `email`        |
+| `data-e9-optional-fields="phone"`      | Optional fields. Declining one does not drop the visitor to Level 0          |
+| `data-e9-prompt="select"`              | Always show the field form again                                              |
 | `data-e9-logout`                       | Click forgets the identity on this website                                   |
 | `data-e9-logout="delegate"`            | Also signs the visitor out of delegate itself, then returns to this page     |
-| `data-e9-profile="given_name"`         | Replaces the element's text with that Profile field when available           |
+| `data-e9-field="given_name"`         | Replaces the element's text with that shared field when available            |
 | `data-e9-level`                        | Replaces the text with the Level number (`0`–`4`)                            |
 | `data-e9-level="name"`                 | Replaces the text with the Level name (`Provided`, `Contact Confirmed`, …)   |
 
-Profile fields you can request and display: `display_name`, `given_name`,
+Fields you can request and display: `display_name`, `given_name`,
 `family_name`, `email`, `phone`. `email_verified` and `phone_verified` are
 booleans on the identity; use them from JavaScript.
 
@@ -174,17 +175,16 @@ booleans on the identity; use them from JavaScript.
 </section>
 ```
 
-Level 2 needs a Profile whose email or phone delegate has confirmed (visitors
-do that once on their delegate Profile page, or by signing in to delegate with
-a verified email). The chooser shows the Level each Profile can reach; picking
-one that falls short returns `level_unavailable` to `onError`, so keep a
-"why" sentence next to the button.
+Level 2 needs an email or phone delegate has confirmed (visitors do that once
+on their delegate details page, or by signing in to delegate with a verified
+email). Declining a required field returns `level_unavailable` to `onError`,
+so keep a "why" sentence next to the button.
 
 ### Example: greeting and badge
 
 ```html
 <p data-e9-min-level="1" hidden>
-  Welcome back, <b data-e9-profile="display_name">friend</b>
+  Welcome back, <b data-e9-field="display_name">friend</b>
   (<span data-e9-level="name"></span>).
 </p>
 ```
@@ -239,8 +239,8 @@ myButton.onclick = () =>
 // Read the verified identity (or null).
 const identity = id.getIdentity();
 identity?.level;                 // 0–4
-identity?.profile?.given_name;   // only fields the visitor agreed to share
-identity?.profile?.email_verified;
+identity?.fields?.given_name;   // only fields the visitor agreed to share
+identity?.fields?.email_verified;
 identity?.sub;                   // Domain UNID: stable id for this person on your Domain
 
 // React to any change (login, logout, expiry).
@@ -267,7 +267,7 @@ Every option is optional.
 | Option        | Default                        | Meaning                                                          |
 | ------------- | ------------------------------ | ---------------------------------------------------------------- |
 | `minLevel`    | `1`                            | Level a bare `data-e9-login` asks for                            |
-| `fields`      | delegate default               | Profile fields login buttons request                             |
+| `fields`      | delegate default               | Required fields login buttons request                            |
 | `mode`        | `'popup'`                      | `'redirect'` sends the whole page to delegate and back           |
 | `prompt`      | —                              | `'select'` always shows the chooser                              |
 | `root`        | `document`                     | Where to look for `data-e9-*` elements                           |
@@ -287,8 +287,8 @@ about the login, not a permission you grant.
 
 | Level | Name                                | How a visitor gets there                                    |
 | ----- | ----------------------------------- | ----------------------------------------------------------- |
-| 0     | Inferred                            | Opened your page. Anonymous; no Profile shared              |
-| 1     | Provided                            | Shared a Profile with a name or email; nothing confirmed     |
+| 0     | Inferred                            | Opened your page. Anonymous; no fields shared                |
+| 1     | Provided                            | Shared a name or email; nothing confirmed                    |
 | 2     | Contact Confirmed                   | The shared email or phone is confirmed                       |
 | 3     | Trusted Provider Confirmed          | Signed in with a trusted provider (Google) recently          |
 | 4     | Trusted Provider Strongly Confirmed | Level 3 plus a second factor                                 |
@@ -332,7 +332,7 @@ same Identity Token, maps it to a `person_id`, and enforces roles with a real
 | --------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | Delegate says the domain is not allowed (`invalid_domain`) | Register the exact Domain. `www.example.com` and `example.com` are different; so is the port  |
 | Nothing happens on click                                  | The page is `file://`, or the click did not come from a user gesture. Serve over http(s)      |
-| Popup opens and closes, page unchanged                    | Check the console: `onError` receives the code. `access_denied` = visitor closed the window; `level_unavailable` = they chose "Stay anonymous" or a Profile below the requested Level |
+| Popup opens and closes, page unchanged                    | Check the console: `onError` receives the code. `access_denied` = visitor closed the window; `level_unavailable` = they chose "Stay anonymous" or declined a required field |
 | Content flashes before hiding                             | Add `hidden` to gated elements in the HTML                                                    |
 | Visitor is logged out after an hour                       | Tokens expire. Clicking **Log in** renews silently; or call `id.ensureLevel(1)` on a gesture  |
 | Logged in on one page, not another                        | Every page needs the script and `mount()`. Storage is per Domain, so `www` and non-`www` differ |
@@ -404,7 +404,7 @@ The script tag build exposes the same functions on `window.engine9Id`.
 ### Protocol and security
 
 The wire format is in [docs/protocol.md](./docs/protocol.md) (canonical).
-Vocabulary: **User**, **Domain**, **Profile**, **Grant**, **UNID**,
+Vocabulary: **User**, **Domain**, **Grant**, **UNID**,
 **Domain UNID**, **Identity Level**, **Identity Token**. The JWT claim is
 `aud` (RFC 7519) and its value is your Domain.
 

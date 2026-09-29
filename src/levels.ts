@@ -23,7 +23,7 @@ const MEANINGS: Record<IdentityLevel, string> = {
   7: 'The person\'s real-world identity was established with a highest-assurance proofing process.',
 };
 
-const PROFILE_FIELDS = [
+const SHAREABLE_FIELDS = [
   'display_name',
   'given_name',
   'family_name',
@@ -89,10 +89,10 @@ export function meetsGate(
   return true;
 }
 
-/** Profile field names a Grant at this level may include. */
+/** Field names a Grant at this level may include. */
 export function fieldsForLevel(level: number): string[] {
   if (level <= 0) return [];
-  const fields: string[] = [...PROFILE_FIELDS];
+  const fields: string[] = [...SHAREABLE_FIELDS];
   if (level >= 2) fields.push('email_verified', 'phone_verified');
   if (level >= 5) fields.push('verified_claims');
   return fields;

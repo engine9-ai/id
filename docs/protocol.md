@@ -20,21 +20,14 @@ product language in docs and APIs (except the JWT claim `aud`, which is RFC 7519
   Domain; another Domain receives a different value. The Domain stores it to
   recognize the person on return.
 - **User** — The authenticated person on delegate (today: a Firebase user,
-  `firebaseUid`). Owns one or more Profiles. Not core's warehouse `person_id`,
+  `firebaseUid`). Holds one set of fields (name, email, phone, attributes,
+  each contact with a verified flag). Not core's warehouse `person_id`,
   and not an admin "user" on the engine9 server. The Firebase uid is never
   sent to a Domain.
-- **Profile** — A persona the person chooses to present to a Domain. Stable
-  `profile_id` on delegate, optional display name and contact fields (each
-  with a verified flag). Every User has at least one Profile (created on
-  first login). The delegate Profile id is not sent to a Domain. Everyone,
-  signed in or not, also has the **Anonymous Profile**: Level 0, no fields.
-- **Domain Profile** — Which Profile is acting on this Domain:
-  `aud ":" hex` (an HMAC of the Profile id), or `aud ":anonymous"` for the
-  Anonymous Profile. The JWT claim is `domain_profile`. A Domain does not need
-  to store it; person identity is the Domain UNID.
-- **Grant** — Remembered decision: share Profile P with Domain D at Level L
-  (fields F). Keyed by (`profile_id`, `domain`). Created by the chooser;
-  revocable.
+- **Grant** — Remembered decision: share fields S with Domain D at Level L.
+  Also stores what D requested, split into required fields R and optional
+  fields O. Keyed by (`firebase_uid`, `domain`). Created by the consent
+  page; revocable. A declined field was requested and is not in S.
 - **Domain** — The login consumer, identified by `host` or `host:port` when the
   port is not the default for the scheme (443 for https, empty for default http).
   Examples: `festival.engine9.ai`, `localhost:3000`. Query params and client
@@ -43,11 +36,10 @@ product language in docs and APIs (except the JWT claim `aud`, which is RFC 7519
 - **Identity Level** (0–7) — Confidence ladder. Delegate implements 0–4;
   5–7 reserved. Levels are not authorization.
 - **Identity Token** — Delegate-signed JWT (ES256) asserting `sub` (Domain
-  UNID), `domain_profile`, `profile`, `level`, `auth` for one `aud`.
-  Short-lived. Verifiable via JWKS. Does not contain the UNID or the delegate
-  Profile id.
+  UNID), `fields`, `level`, `auth` for one `aud`.
+  Short-lived. Verifiable via JWKS. Does not contain the UNID.
 - **Core Session** — Optional HMAC token a core Site mints after verifying an
-  Identity Token. Holds `personId`, `roles`, `domainUnid`, `domainProfile`,
+  Identity Token. Holds `personId`, `roles`, `domainUnid`,
   `level`, `auth`. A
   cache of verified identity plus Site-only facts. Never required for
   authentication.
@@ -67,7 +59,7 @@ product language in docs and APIs (except the JWT claim `aud`, which is RFC 7519
   "identity_authorize_endpoint": "https://delegate.engine9.ai/identity/authorize",
   "identity_bridge_endpoint": "https://delegate.engine9.ai/identity/bridge",
   "logout_endpoint": "https://delegate.engine9.ai/identity/logout",
-  "profile_endpoint": "https://delegate.engine9.ai/profiles",
+  "fields_endpoint": "https://delegate.engine9.ai/user/fields",
   "levels_supported": [0, 1, 2, 3, 4],
   "token_signing_alg_values_supported": ["ES256"]
 }
@@ -83,11 +75,9 @@ the current key is omitted.
 Identity Tokens are JSON Web Tokens. Issuance and verification follow:
 
 - **RFC 7519** — JWT. Header `typ` is `JWT`. Registered claims in use: `iss`,
-  `sub`, `aud`, `iat`, `exp`, `jti`. Other claims (`domain_profile`,
-  `merged_from`, `level`, `profile`, `auth`, `grant`, `nonce`) are private claims agreed by this
-  protocol. `profile` here is not the OpenID Connect `profile` claim (a
-  profile-page URL). It is the granted Delegate Profile fields, and it has
-  no `id`.
+  `sub`, `aud`, `iat`, `exp`, `jti`. Other claims (`merged_from`, `level`,
+  `fields`, `auth`, `grant`, `nonce`) are private claims agreed by this
+  protocol. `fields` is the values the User shared with this Domain.
 - **RFC 7515** — compact JWS serialization.
 - **RFC 7518** — `alg` is `ES256` only (ECDSA using P-256 and SHA-256).
 - **RFC 7517** — public keys are a JWK Set (`{"keys":[...]}`) at the URL in
@@ -119,12 +109,11 @@ Claims:
 | `iat`, `exp` | Unix seconds. Default TTL 3600s |
 | `jti` | Unique token id |
 | `nonce` | Echo of client nonce when supplied |
-| `domain_profile` | Domain Profile: `aud ":" hex`, or `aud ":anonymous"` for the Anonymous Profile |
 | `merged_from` | Optional. An earlier Domain UNID for the same person (see [UNID merge](#unid-merge)) |
 | `level` | Integer 0–4 achieved for this token |
-| `profile` | Present when `level >= 1`. Granted fields only. No `id` |
+| `fields` | Present when `level >= 1` and at least one shared field has a value |
 | `auth` | `{ provider?, amr, auth_time?, two_factor }` |
-| `grant` | `{ id, granted_at, fields }` when a Grant exists |
+| `grant` | `{ id, granted_at, requested, required, shared }` when a Grant exists |
 | `verified_claims` | Reserved for Levels 5–7 (OpenID IDA). Not emitted now |
 
 Both ids use one Worker secret, `UNID_PEPPER`. The Domain string (`aud`) is
@@ -133,14 +122,13 @@ table, and minting a token does not read D1 or `DOMAINS_KV` to compute these
 values. The hex part is lowercase (64 characters):
 
 ```text
-sub            = aud ":" hex(HMAC-SHA256(UNID_PEPPER, "unid"    ‖ 0x00 ‖ aud ‖ 0x00 ‖ unid))
-domain_profile = aud ":" hex(HMAC-SHA256(UNID_PEPPER, "profile" ‖ 0x00 ‖ aud ‖ 0x00 ‖ profile_id))
+sub = aud ":" hex(HMAC-SHA256(UNID_PEPPER, "unid" ‖ 0x00 ‖ aud ‖ 0x00 ‖ unid))
 ```
 
 `0x00` is a single zero byte. Verifiers reject a `sub` that does not start
 with `aud ":"`.
 
-`profile` shape (only fields named on the Grant; verified flags only with
+`fields` shape (only fields the User shared; verified flags only with
 that contact):
 
 ```json
@@ -191,7 +179,8 @@ Query:
 - `return_to` — absolute URL on that Domain (required)
 - `min_level` — 0–4 (default 0)
 - `max_level` — 0–4 (optional cap)
-- `fields` — comma-separated profile field names
+- `fields` — comma-separated required field names. When both this and `optional_fields` are empty, required defaults to `display_name,email`. A logged-out Level 0 request returns before that default.
+- `optional_fields` — comma-separated optional field names
 - `prompt` — `none` \| `select` \| `consent` \| `login`
 - `nonce`, `state` — opaque client values
 - `response_mode` — `fragment` (default) or `query`
@@ -202,18 +191,23 @@ Rules:
 - `domain` must pass `ALLOWED_DOMAINS` or be listed in the `domain` table
   with `allowed = 1`.
 - `return_to` on `/login`, `POST /auth/session`, `/identity/logout`, and
-  `/profile/bridge` uses that same allow rule.
+  `/whoami/bridge` uses that same allow rule.
 
 Behavior:
 
-1. Resolve UNID; resolve User session; find Grant for (chosen Profile, Domain).
-2. If a Grant already satisfies `min_level` and `prompt` is `none` or unset,
-   issue a token silently.
+1. Resolve UNID and the User session. Find the active Grant for (User, Domain).
+2. If `prompt` is `none` or unset, and the Grant already covers this request
+   (every requested field was answered before, every required field is shared
+   and has a value) at `min_level`, issue a token silently. A previously
+   declined optional field does not re-prompt.
 3. If `prompt=none` and that is not possible, redirect with
    `error=interaction_required` (or `login_required`).
-4. Otherwise show the chooser: Profiles (fields + level each would share),
-   "Stay anonymous (Level 0)", "Add profile", and login / step-up when
-   required. Persist a Grant on continue.
+4. Otherwise show consent: required fields locked, optional fields as
+   checkboxes, "Stay anonymous (Level 0)", and login when required. On Share,
+   `requested` is the union of the old list and this request, `required` is
+   this request's required list, and `shared` is what the User checked.
+   Declining a required field is the anonymous outcome (`level_unavailable`
+   when `min_level > 0`). Staying anonymous does not revoke an existing Grant.
 
 Success:
 
@@ -231,15 +225,15 @@ Codes: `interaction_required`, `login_required`, `level_unavailable`,
 
 `GET /identity/bridge?domain=<host[:port]>&min_level=&prompt=&nonce=&state=`
 
-Top-level popup so SameSite=Lax cookies apply. Same chooser logic as authorize.
+Top-level popup so SameSite=Lax cookies apply. Same consent logic as authorize.
 On success, `postMessage` to `window.opener`:
 
 ```json
 { "type": "delegate-identity", "token": "<jwt>", "state": "<state>" }
 ```
 
-On failure (`prompt=none` not satisfiable, the User chose a Profile below
-`min_level`, or the Profile is not theirs) the same message carries an error
+On failure (`prompt=none` not satisfiable, or the User declined a required
+field while `min_level > 0`) the same message carries an error
 code instead of a token, then the popup closes:
 
 ```json
@@ -252,22 +246,20 @@ message rejects with `access_denied`.
 
 `targetOrigin` is the Domain’s page origin (`return_to` origin). Then the popup closes.
 
-Deprecated alias: `GET /profile/bridge` still posts
-`{ "type": "delegate-profile", unid, isNew, loggedIn, email, signInProvider }`.
+`GET /whoami` returns `{ unid, isNew, loggedIn, email, signInProvider }` for this browser, without an Identity Token. `GET /whoami/bridge?origin=` is the top-level popup that posts `{ "type": "delegate-whoami", unid, isNew, loggedIn, email, signInProvider }`.
 
-## Profiles and Grants (same-origin, User session required)
+## Fields and Grants (same-origin, User session required)
 
-- `GET /profiles` — list
-- `POST /profiles` — create
-- `PATCH /profiles/:id`
-- `DELETE /profiles/:id`
-- `GET /profiles/:id/grants`
+- `GET /user/fields`
+- `PATCH /user/fields`
+- `GET /grants`
+- `PATCH /grants/:id` — body `{ shared }`
 - `DELETE /grants/:id` — revoke a Domain
-- `POST /profiles/:id/verify/email` — start Level 2 email confirmation
-- `POST /profiles/:id/verify/phone` — start Level 2 phone confirmation
-- `POST /profiles/:id/verify/confirm` — `{ channel, code }`
+- `POST /user/verify/email` — start Level 2 email confirmation
+- `POST /user/verify/phone` — start Level 2 phone confirmation
+- `POST /user/verify/confirm` — `{ channel, code }`
 
-Human page: `GET /user` — manage Profiles and connected Domains.
+Human page: `GET /user` — manage fields and connected Domains. The page posts `POST /grants/:id/fields` to change what is shared.
 
 ## Logout
 
@@ -281,10 +273,9 @@ Human page: `GET /user` — manage Profiles and connected Domains.
 
 Implemented in delegate `src/lib/levels.ts`.
 
-- **0 Inferred** — Anonymous Profile. `domain_profile` is `aud ":anonymous"`, no `profile`.
-- **1 Provided** — Profile shared with at least one self-asserted field, none
-  of those contacts verified.
-- **2 Contact Confirmed** — Shared Profile has `email_verified` or
+- **0 Inferred** — No Grant. No `fields` claim.
+- **1 Provided** — The User shared fields, and none of those contacts are verified.
+- **2 Contact Confirmed** — The User has `email_verified` or
   `phone_verified`, or the User signed in with Firebase `password` /
   `emailLink` and the email is verified.
 - **3 Trusted Provider Confirmed** — User authenticated via a provider in
@@ -305,5 +296,5 @@ interaction, `level_unavailable`.
 - Core Site: same JWT verification (no shared secret). Maps `sub` (and
   `merged_from`, when present) → `person_id`, loads Roles gated by `level`,
   optionally mints a Core Session.
-- Delegate: verifies Firebase ID tokens; assigns Levels; stores Profiles and
+- Delegate: verifies Firebase ID tokens; assigns Levels; stores User fields and
   Grants; signs Identity Tokens.

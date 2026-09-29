@@ -96,9 +96,6 @@ function asIdentity(payload: Record<string, unknown>, domain: string): Identity 
   if (typeof sub !== 'string' || !sub.startsWith(prefix) || sub.length === prefix.length) {
     throw new DelegateIdentityError('invalid_token', 'Identity Token sub is not a Domain UNID for this domain');
   }
-  if (typeof payload.domain_profile !== 'string' || !payload.domain_profile.startsWith(prefix)) {
-    throw new DelegateIdentityError('invalid_token', 'Identity Token is missing domain_profile');
-  }
   if (payload.merged_from !== undefined) {
     if (typeof payload.merged_from !== 'string' || !payload.merged_from.startsWith(prefix)) {
       throw new DelegateIdentityError('invalid_token', 'Identity Token merged_from is not a Domain UNID for this domain');

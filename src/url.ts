@@ -24,6 +24,7 @@ export interface AuthorizeUrlOptions {
   minLevel?: number;
   maxLevel?: number;
   fields?: string[] | string;
+  optionalFields?: string[] | string;
   prompt?: string;
   nonce?: string;
   state?: string;
@@ -37,6 +38,7 @@ export interface BridgeUrlOptions {
   minLevel?: number;
   maxLevel?: number;
   fields?: string[] | string;
+  optionalFields?: string[] | string;
   prompt?: string;
   nonce?: string;
   state?: string;
@@ -74,6 +76,7 @@ export function authorizeUrl(opts: AuthorizeUrlOptions): string {
   setOptional(url.searchParams, 'min_level', opts.minLevel);
   setOptional(url.searchParams, 'max_level', opts.maxLevel);
   setOptional(url.searchParams, 'fields', fieldsParam(opts.fields));
+  setOptional(url.searchParams, 'optional_fields', fieldsParam(opts.optionalFields));
   setOptional(url.searchParams, 'prompt', opts.prompt);
   setOptional(url.searchParams, 'nonce', opts.nonce);
   setOptional(url.searchParams, 'state', opts.state);
@@ -90,6 +93,7 @@ export function bridgeUrl(opts: BridgeUrlOptions): string {
   setOptional(url.searchParams, 'min_level', opts.minLevel);
   setOptional(url.searchParams, 'max_level', opts.maxLevel);
   setOptional(url.searchParams, 'fields', fieldsParam(opts.fields));
+  setOptional(url.searchParams, 'optional_fields', fieldsParam(opts.optionalFields));
   setOptional(url.searchParams, 'prompt', opts.prompt);
   setOptional(url.searchParams, 'nonce', opts.nonce);
   setOptional(url.searchParams, 'state', opts.state);

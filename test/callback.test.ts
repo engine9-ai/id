@@ -70,7 +70,7 @@ describe('handleCallback', () => {
     });
     const identity = await id.handleCallback();
     expect(identity?.sub).toBe(`${DOMAIN}:query-unid`);
-    expect(identity?.domain_profile).toBe(`${DOMAIN}:anonymous`);
+    expect(identity?.fields).toBeUndefined();
     expect(id.level).toBe(0);
     expect(id.isAnonymous).toBe(true);
   });

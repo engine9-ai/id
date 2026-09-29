@@ -15,7 +15,7 @@ export function defaultConfiguration(delegateUrl: string): DelegateConfiguration
     identity_authorize_endpoint: `${base}/identity/authorize`,
     identity_bridge_endpoint: `${base}/identity/bridge`,
     logout_endpoint: `${base}/identity/logout`,
-    profile_endpoint: `${base}/profiles`,
+    fields_endpoint: `${base}/user/fields`,
     levels_supported: [0, 1, 2, 3, 4],
     token_signing_alg_values_supported: ['ES256'],
   };

@@ -11,10 +11,9 @@ import type { Identity } from '../src/types';
 function identity(partial: Partial<Identity>): Identity {
   return {
     sub: partial.sub ?? 'site.example:u1',
-    domain_profile: partial.domain_profile ?? 'site.example:anonymous',
     level: partial.level ?? 0,
     exp: partial.exp ?? Math.floor(Date.now() / 1000) + 3600,
-    profile: partial.profile,
+    fields: partial.fields,
     auth: partial.auth,
   };
 }
@@ -71,7 +70,7 @@ describe('evaluateDeclaredRole', () => {
     expect(result.visible).toBe(false);
   });
 
-  it('matches via profile attributes without a claim', () => {
+  it('matches via field attributes without a claim', () => {
     const role = {
       ...activist,
       match: { attributes: { interest: 'activist' } },
@@ -79,8 +78,7 @@ describe('evaluateDeclaredRole', () => {
     const result = evaluateDeclaredRole(role, {
       identity: identity({
         level: 1,
-        profile: {
-          id: 'p1',
+        fields: {
           attributes: { interest: 'activist' },
         },
       }),

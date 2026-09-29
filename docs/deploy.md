@@ -97,8 +97,8 @@ element with `data-e9-login` does that:
 | Level asked   | What the visitor does                                          |
 | ------------- | -------------------------------------------------------------- |
 | `data-e9-login="0"` | Continue with a UNID only. No name or email              |
-| `data-e9-login` (1) | Pick a Profile to share name and email. Nothing verified yet |
-| `data-e9-login="2"` | Pick a Profile whose email or phone delegate has confirmed |
+| `data-e9-login` (1) | Share a name and email. Nothing verified yet |
+| `data-e9-login="2"` | Share an email or phone delegate has confirmed |
 
 From JavaScript: `id.requestIdentity({ minLevel: 1, mode: "popup", fields })`.
 `mode: "redirect"` sends the whole window to delegate and back; popup mode
@@ -112,7 +112,7 @@ It is for greetings, teasers, and “you’re signed in” layouts.
 ```html
 <div data-e9-max-level="0">Log in to keep reading.</div>
 <div data-e9-min-level="1" hidden>
-  Welcome, <span data-e9-profile="given_name">reader</span>. Full article…
+  Welcome, <span data-e9-field="given_name">reader</span>. Full article…
 </div>
 ```
 

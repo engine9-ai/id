@@ -122,6 +122,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       minLevel: opts.minLevel,
       maxLevel: opts.maxLevel,
       fields: opts.fields,
+      optionalFields: opts.optionalFields,
       prompt: opts.prompt,
       nonce,
       state,
@@ -224,6 +225,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
           minLevel: n,
           maxLevel: opts.maxLevel,
           fields: opts.fields,
+          optionalFields: opts.optionalFields,
           mode,
           returnTo: opts.returnTo,
           responseMode: opts.responseMode,
@@ -238,6 +240,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       minLevel: n,
       maxLevel: opts.maxLevel,
       fields: opts.fields,
+      optionalFields: opts.optionalFields,
       mode,
       returnTo: opts.returnTo,
       responseMode: opts.responseMode,
@@ -315,7 +318,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     },
     get isAnonymous() {
       const identity = getIdentity();
-      return !identity || identity.level === 0 || !identity.profile;
+      return !identity || identity.level === 0;
     },
     core,
   };

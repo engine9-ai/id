@@ -12,7 +12,7 @@ Canonical columns live in `@engine9/interfaces`:
 | `person_email` | `email`, `email_type` (`Personal` \| `Work` \| `Other`) |
 | `person_phone` | `phone`, `phone_type` (`Personal` \| `Cell` \| `Home` \| `Work` \| `Fax` \| `Other`) |
 
-Identity Profile tokens may also include `display_name` (display only — not a
+Identity Tokens may also include `display_name` (display only — not a
 `person` column).
 
 ## Rules
@@ -53,7 +53,7 @@ createPersonForm({
 Payload shape matches core `POST /people` / public form ingest. See
 [with-core.md](./with-core.md).
 
-Profile Grants from delegate use contact fields without warehouse types
+Grants from delegate use contact fields without warehouse types
 (`email`, `given_name`, …). Keep `email_type` on the **site** people payload.
 
 ## Demos

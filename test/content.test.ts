@@ -106,7 +106,7 @@ describe('bindContent', () => {
     '<button id="login" data-e9-login>Log in</button>' +
     '<button id="login2" data-e9-login="2" data-e9-fields="given_name, email">Verify</button>' +
     '<button id="logout" data-e9-logout>Log out</button>' +
-    '<p id="hello" data-e9-min-level="1" hidden>Hi <span data-e9-profile="given_name">friend</span></p>' +
+    '<p id="hello" data-e9-min-level="1" hidden>Hi <span data-e9-field="given_name">friend</span></p>' +
     '<article id="story" data-e9-min-level="1" hidden>Full story</article>' +
     '<div id="paywall" data-e9-max-level="0">Log in to keep reading</div>' +
     '<div id="mfa" data-e9-two-factor hidden>Two-factor only</div>' +
@@ -135,7 +135,7 @@ describe('bindContent', () => {
     const token = await signIdentityToken(keys, {
       sub: `${DOMAIN}:reader`,
       level: 1,
-      profile: { given_name: 'Alex', email: 'alex@example.com' },
+      fields: { given_name: 'Alex', email: 'alex@example.com' },
     });
     const id = createEngine9Id({
       delegateUrl: ISSUER,
@@ -254,7 +254,7 @@ describe('mount', () => {
     const identity = await id.ready;
     expect(identity?.sub).toBe(`${DOMAIN}:mounted`);
     expect(id.level).toBe(1);
-    expect(id.isAnonymous).toBe(true); // no profile shared on this token
+    expect(id.isAnonymous).toBe(false);
     expect(q(root, '#story').hidden).toBe(false);
     expect(q(root, '#paywall').hidden).toBe(true);
     expect(location.hash).not.toContain('delegate_token');

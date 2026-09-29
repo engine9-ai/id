@@ -100,7 +100,7 @@ import { describeLevel, meetsLevel } from "@engine9/id/levels";
 
 const ident = id.getIdentity();
 if (!ident || ident.level === 0) showAnonymous(ident?.sub);
-else if (meetsLevel(ident, 3)) showTrusted(ident.profile);
+else if (meetsLevel(ident, 3)) showTrusted(ident.fields);
 ```
 
 ## 5. Errors

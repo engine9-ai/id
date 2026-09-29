@@ -13,9 +13,7 @@ export type FetchImpl = (
   init?: RequestInit,
 ) => Promise<Response>;
 
-export interface IdentityProfile {
-  /** Absent on Identity Tokens. Present on delegate's own Profile API. */
-  id?: string;
+export interface IdentityFields {
   display_name?: string;
   given_name?: string;
   family_name?: string;
@@ -38,19 +36,20 @@ export interface IdentityAuth {
 export interface IdentityGrant {
   id: string;
   granted_at: string | number;
-  fields: string[];
+  requested: string[];
+  required: string[];
+  shared: string[];
 }
 
 /** Verified Identity Token payload (protocol claims). */
 export interface Identity {
   /** Domain UNID (`domain:hex`): this person on this Domain. Not the delegate UNID. */
   sub: string;
-  /** Domain Profile (`domain:hex`, or `domain:anonymous`): the Profile acting on this Domain. */
-  domain_profile: string;
   /** Earlier Domain UNID for the same person, sent after Delegate merges a browser's UNID. */
   merged_from?: string;
   level: number;
-  profile?: IdentityProfile;
+  /** Values of the fields the User shared with this Domain. */
+  fields?: IdentityFields;
   auth?: IdentityAuth;
   grant?: IdentityGrant;
   exp: number;
@@ -77,6 +76,7 @@ export interface Engine9IdProvider {
     minLevel?: number;
     maxLevel?: number;
     fields?: string[];
+    optionalFields?: string[];
     prompt?: Prompt;
     nonce?: string;
     state?: string;
@@ -87,6 +87,7 @@ export interface Engine9IdProvider {
     minLevel?: number;
     maxLevel?: number;
     fields?: string[];
+    optionalFields?: string[];
     prompt?: Prompt;
     nonce?: string;
     state?: string;
@@ -123,6 +124,7 @@ export interface RequestIdentityOptions {
   minLevel: number;
   maxLevel?: number;
   fields?: string[];
+  optionalFields?: string[];
   prompt?: Prompt;
   mode: IdentityMode;
   returnTo?: string;
@@ -133,6 +135,7 @@ export interface EnsureLevelOptions {
   mode?: IdentityMode;
   maxLevel?: number;
   fields?: string[];
+  optionalFields?: string[];
   prompt?: Prompt;
   returnTo?: string;
   responseMode?: ResponseMode;
@@ -159,7 +162,7 @@ export interface DelegateConfiguration {
   identity_authorize_endpoint: string;
   identity_bridge_endpoint: string;
   logout_endpoint: string;
-  profile_endpoint?: string;
+  fields_endpoint?: string;
   levels_supported?: number[];
   token_signing_alg_values_supported?: string[];
 }
@@ -169,8 +172,7 @@ export interface CoreSession {
   roles?: string[];
   domainUnid?: string;
   level?: number;
-  domainProfile?: string;
-  profile?: IdentityProfile;
+  fields?: IdentityFields;
   auth?: IdentityAuth;
   exp?: number;
   [key: string]: unknown;

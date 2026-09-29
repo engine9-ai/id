@@ -51,7 +51,7 @@ export type {
   IdentityAuth,
   IdentityGrant,
   IdentityMode,
-  IdentityProfile,
+  IdentityFields,
   Jwk,
   Jwks,
   Prompt,

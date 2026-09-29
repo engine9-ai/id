@@ -6,7 +6,7 @@
 
 | Concept | Package | Key | Membership | Enforcement |
 | --- | --- | --- | --- | --- |
-| Declared role | `@engine9/id` | string id (`activist`) | Claimed on the page and/or Profile `attributes` | Soft UI only |
+| Declared role | `@engine9/id` | string id (`activist`) | Claimed on the page and/or shared `attributes` | Soft UI only |
 | Segment role | `@engine9/core` | `role_id === segment_id` (UUID) | `person_segment` | Hard scopes + 403 |
 
 Do **not** call declared roles “anonymous roles”. Level 0 visitors are

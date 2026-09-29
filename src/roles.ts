@@ -19,7 +19,7 @@ export interface DeclaredRole {
   id: string;
   name: string;
   requiredAuth?: RequiredAuth;
-  /** Optional Profile.attributes match (all keys must equal). */
+  /** Optional fields.attributes match (all keys must equal). */
   match?: { attributes?: Record<string, unknown> };
   /** Optional map to a core segment role when the Site adds warehouse membership. */
   segment_id?: string;
@@ -89,7 +89,7 @@ export function evaluateDeclaredRole(
   const claimed = isClaimed(role.id, ctx.claimedIds);
   const attrOk = attributesMatch(
     role.match?.attributes,
-    ctx.identity?.profile?.attributes,
+    ctx.identity?.fields?.attributes,
   );
   const hasMatchRule = Boolean(
     role.match?.attributes && Object.keys(role.match.attributes).length > 0,

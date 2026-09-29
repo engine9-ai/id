@@ -76,6 +76,6 @@ Public register / `POST /people` payloads should use interface names:
 
 ## Email on `person`
 
-Core copies Profile email onto the person record only when
-`email_verified` is true (Level ≥ 2). Self-asserted emails stay on the token
+Core copies a shared email onto the person record only when
+`email_verified` is true. Self-asserted emails stay on the token
 for display; they do not pollute warehouse identity.
