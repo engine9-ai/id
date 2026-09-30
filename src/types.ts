@@ -131,6 +131,21 @@ export interface RequestIdentityOptions {
   responseMode?: ResponseMode;
 }
 
+/**
+ * Options for `changeDelegateInfo`. Defaults repeat the current Grant's
+ * request: its required fields, its other requested fields as optional,
+ * Level 1, popup.
+ */
+export interface ChangeDelegateInfoOptions {
+  minLevel?: number;
+  maxLevel?: number;
+  fields?: string[];
+  optionalFields?: string[];
+  mode?: IdentityMode;
+  returnTo?: string;
+  responseMode?: ResponseMode;
+}
+
 export interface EnsureLevelOptions {
   mode?: IdentityMode;
   maxLevel?: number;
@@ -213,6 +228,12 @@ export interface Engine9Id {
   requestIdentity(opts: RequestIdentityOptions): Promise<Identity | void>;
   handleCallback(): Promise<Identity | null>;
   ensureLevel(n: number, opts?: EnsureLevelOptions): Promise<Identity | void>;
+  /**
+   * "Change your Delegate information": reopen delegate's consent page
+   * (`prompt=select`) so a signed-in visitor can pick another email address
+   * or change what they share. Resolves with the re-issued identity.
+   */
+  changeDelegateInfo(opts?: ChangeDelegateInfoOptions): Promise<Identity | void>;
   logout(opts?: { delegate?: boolean }): void;
   onChange(cb: (identity: Identity | null) => void): () => void;
   /**

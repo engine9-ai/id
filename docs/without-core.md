@@ -48,6 +48,10 @@ The shortest version is `mount()` plus `data-e9-*` attributes; see the
 5. Optionally evaluate declared roles with `evaluateDeclaredRole` /
    `visibleContent` for soft sections.
 6. When the token is near expiry, `ensureLevel(n)` (silent, then interactive).
+7. Once signed in, offer **Change your Delegate information**
+   (`changeDelegateInfo()` or `data-e9-change-delegate`) so a person who
+   shared the wrong email address can pick another. Logging in again would
+   return the same one.
 
 Level 0 is always available: a UNID with no fields shared. Use it for
 anonymous analytics and “continue as anonymous” affordances.

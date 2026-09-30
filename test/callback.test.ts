@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createEngine9Id } from '../src/client';
+import { createDelegateProvider } from '../src/provider';
 import { parseDelegateCallback } from '../src/url';
 import {
   createTestKeys,
@@ -73,5 +74,61 @@ describe('handleCallback', () => {
     expect(identity?.fields).toBeUndefined();
     expect(id.level).toBe(0);
     expect(id.isAnonymous).toBe(true);
+  });
+});
+
+describe('changeDelegateInfo', () => {
+  afterEach(() => {
+    setPageUrl('/');
+    vi.restoreAllMocks();
+  });
+
+  it('repeats the Grant request with prompt=select', async () => {
+    const keys = await createTestKeys();
+    const token = await signIdentityToken(keys, {
+      sub: `${DOMAIN}:changer`,
+      level: 3,
+      fields: { email: 'alex@gmail.com', email_verified: true },
+      grant: {
+        id: 'g1',
+        granted_at: '2026-09-30T00:00:00.000Z',
+        requested: ['display_name', 'email', 'phone'],
+        required: ['display_name', 'email'],
+        shared: ['display_name', 'email'],
+      },
+    });
+    setPageUrl(`/troupe#delegate_token=${token}`);
+    const base = createDelegateProvider({
+      delegateUrl: ISSUER,
+      fetchImpl: mockDelegateFetch(keys.jwk),
+    });
+    const buildAuthorizeUrl = vi.fn(() => '#changing');
+    const id = createEngine9Id({
+      domain: DOMAIN,
+      storage: 'memory',
+      provider: {
+        id: base.id,
+        discover: () => base.discover(),
+        verifyToken: (t, o) => base.verifyToken(t, o),
+        buildAuthorizeUrl,
+      },
+    });
+    await id.handleCallback();
+
+    await id.changeDelegateInfo({ mode: 'redirect' });
+    expect(buildAuthorizeUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        domain: DOMAIN,
+        prompt: 'select',
+        minLevel: 1,
+        fields: ['display_name', 'email'],
+        optionalFields: ['phone'],
+      }),
+    );
+
+    await id.changeDelegateInfo({ mode: 'redirect', minLevel: 2, fields: ['email'] });
+    expect(buildAuthorizeUrl).toHaveBeenLastCalledWith(
+      expect.objectContaining({ prompt: 'select', minLevel: 2, fields: ['email'] }),
+    );
   });
 });

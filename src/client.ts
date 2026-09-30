@@ -6,6 +6,7 @@ import { createDelegateProvider } from './provider';
 import { randomId } from './random';
 import { createStorage, STORAGE_KEYS } from './storage';
 import type {
+  ChangeDelegateInfoOptions,
   Engine9Id,
   Engine9IdConfig,
   Engine9IdProvider,
@@ -248,6 +249,24 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     });
   };
 
+  const changeDelegateInfo = (
+    opts: ChangeDelegateInfoOptions = {},
+  ): Promise<Identity | void> => {
+    const grant = getIdentity()?.grant;
+    const required = grant?.required?.length ? grant.required : undefined;
+    const optional = grant?.requested?.filter((name) => !grant.required?.includes(name));
+    return requestIdentity({
+      minLevel: opts.minLevel ?? 1,
+      maxLevel: opts.maxLevel,
+      fields: opts.fields ?? required,
+      optionalFields: opts.optionalFields ?? (optional?.length ? optional : undefined),
+      mode: opts.mode ?? 'popup',
+      returnTo: opts.returnTo,
+      responseMode: opts.responseMode,
+      prompt: 'select',
+    });
+  };
+
   const logout = (opts: { delegate?: boolean } = {}): void => {
     storage.clearIdentity();
     notify(null);
@@ -293,6 +312,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     requestIdentity,
     handleCallback,
     ensureLevel,
+    changeDelegateInfo,
     logout,
     onChange(cb) {
       listeners.add(cb);

@@ -91,6 +91,7 @@ element with `data-e9-login` does that:
 
 ```html
 <button data-e9-login data-e9-fields="given_name,family_name,email">Log in</button>
+<button data-e9-change-delegate hidden>Change your Delegate information</button>
 <button data-e9-logout hidden>Log out</button>
 ```
 
@@ -103,6 +104,14 @@ element with `data-e9-login` does that:
 From JavaScript: `id.requestIdentity({ minLevel: 1, mode: "popup", fields })`.
 `mode: "redirect"` sends the whole window to delegate and back; popup mode
 falls back to it automatically when the popup is blocked.
+
+Keep the **Change your Delegate information** button unless you ask for no
+fields. Delegate remembers which email address a person shares with your
+Domain, so logging in again returns the same one. If they shared the wrong
+address, this button reopens delegate's share page so they can pick another,
+add one, or use a different Google account. It appears once they are signed
+in. Also put it on any "that address isn't on our list" message.
+From JavaScript: `id.changeDelegateInfo()`.
 
 ## Step 3 — Show different content (soft)
 
@@ -160,6 +169,8 @@ Details: [forms.md](./forms.md).
 3. After you finish, the page shows a Level and a UNID.
 4. If delegate says the domain is not allowed, the Domain does not match
    (including `www`, `http` vs `https`, or the port).
+5. Click **Change your Delegate information**. Delegate shows the share page
+   with your email addresses even though you already shared.
 
 ## What id will not do
 

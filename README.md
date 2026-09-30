@@ -68,6 +68,7 @@ Run it in browser code only (not during server rendering).
 ```html
 <header>
   <button data-e9-login>Log in</button>
+  <button data-e9-change-delegate hidden>Change your Delegate information</button>
   <button data-e9-logout hidden>Log out</button>
   <span data-e9-min-level="1" hidden>
     Hello, <span data-e9-field="given_name">reader</span>
@@ -123,6 +124,7 @@ Put these attributes on any element. The library toggles the element's
 | `data-e9-two-factor`             | the visitor signed in with a second factor                      |
 | `data-e9-login`                  | the visitor is **below** the button's Level (default 1)         |
 | `data-e9-logout`                 | the visitor is signed in (Level 1 or higher)                    |
+| `data-e9-change-delegate`        | the visitor is signed in (Level 1 or higher)                    |
 
 Combine `min` and `max` for a band: `data-e9-min-level="1" data-e9-max-level="2"`.
 No identity counts as Level 0.
@@ -141,6 +143,7 @@ Buttons and text:
 | `data-e9-prompt="select"`              | Always show the field form again                                              |
 | `data-e9-logout`                       | Click forgets the identity on this website                                   |
 | `data-e9-logout="delegate"`            | Also signs the visitor out of delegate itself, then returns to this page     |
+| `data-e9-change-delegate`              | "Change your Delegate information": reopens delegate to pick another email address or change what is shared. Value is the minimum Level (default 1) |
 | `data-e9-field="given_name"`         | Replaces the element's text with that shared field when available            |
 | `data-e9-level`                        | Replaces the text with the Level number (`0`–`4`)                            |
 | `data-e9-level="name"`                 | Replaces the text with the Level name (`Provided`, `Contact Confirmed`, …)   |
@@ -179,6 +182,25 @@ Level 2 needs an email or phone delegate has confirmed (visitors do that once
 on their delegate details page, or by signing in to delegate with a verified
 email). Declining a required field returns `level_unavailable` to `onError`,
 so keep a "why" sentence next to the button.
+
+### Example: the site does not know that address
+
+A person can sign in with an address your site does not have on file (a
+personal Gmail instead of the address on your member list). They are signed
+in to delegate, so a second "Sign in with Google" does nothing new. Give them
+a **Change your Delegate information** button instead. Delegate shows the
+share page again with their email addresses. They can pick another one, add
+one, or use a different Google account. Your page then gets a new token.
+
+```html
+<div data-e9-min-level="1" hidden>
+  <p>That address isn't on our list. Use the address we have for you.</p>
+  <button data-e9-change-delegate>Change your Delegate information</button>
+</div>
+```
+
+From JavaScript: `id.changeDelegateInfo()`. It repeats the fields the
+current Grant asked for.
 
 ### Example: greeting and badge
 
@@ -384,6 +406,7 @@ Guides: [with-core](./docs/with-core.md), [declared roles](./docs/declared-roles
 | `requestIdentity({ minLevel, maxLevel?, fields?, prompt?, mode, returnTo?, responseMode? })` | Start login. `popup` opens `/identity/bridge`; `redirect` navigates to `/identity/authorize` |
 | `handleCallback()` | Read `#delegate_token` or `?delegate_token` on return, verify, store, clean the URL |
 | `ensureLevel(n, opts?)` | No-op if already at `n`; otherwise try silently, then interactively |
+| `changeDelegateInfo(opts?)` | "Change your Delegate information": `prompt=select` with the current Grant's fields, so the visitor can pick another email address. Options as `requestIdentity`, all optional (default Level 1, popup) |
 | `gate({ minLevel?, maxLevel?, twoFactor?, onAllow?, onBlock?, onChange? })` | Soft content hook; returns unsubscribe |
 | `onChange(cb)` | Any identity change; returns unsubscribe |
 | `logout({ delegate? })` | Clear storage; optionally end the delegate session |

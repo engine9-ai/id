@@ -213,6 +213,46 @@ describe('bindContent', () => {
     expect(logout).toHaveBeenCalledWith({ delegate: false });
   });
 
+  it('shows "Change your Delegate information" only when signed in, and reopens consent', async () => {
+    const root = html(
+      PAGE +
+        '<button id="change" data-e9-change-delegate hidden>Change your Delegate information</button>' +
+        '<button id="change3" data-e9-change-delegate="3" data-e9-fields="email">Change</button>',
+    );
+    const keys = await createTestKeys();
+    const token = await signIdentityToken(keys, { sub: `${DOMAIN}:changer`, level: 3 });
+    const id = createEngine9Id({
+      delegateUrl: ISSUER,
+      domain: DOMAIN,
+      storage: 'memory',
+      fetchImpl: mockDelegateFetch(keys.jwk),
+    });
+    const change = vi
+      .spyOn(id, 'changeDelegateInfo')
+      .mockResolvedValue(undefined as unknown as void);
+    bindContent(id, { root, mode: 'redirect' });
+    expect(q(root, '#change').hidden).toBe(true);
+
+    setPageUrl(`/article#delegate_token=${token}`);
+    await id.handleCallback();
+    expect(q(root, '#change').hidden).toBe(false);
+
+    q(root, '#change').click();
+    expect(change).toHaveBeenLastCalledWith({
+      minLevel: undefined,
+      fields: undefined,
+      optionalFields: undefined,
+      mode: 'redirect',
+    });
+    q(root, '#change3').click();
+    expect(change).toHaveBeenLastCalledWith(
+      expect.objectContaining({ minLevel: 3, fields: ['email'] }),
+    );
+
+    id.logout();
+    expect(q(root, '#change').hidden).toBe(true);
+  });
+
   it('unbind stops updating', async () => {
     const root = html(PAGE);
     const keys = await createTestKeys();

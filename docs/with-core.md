@@ -47,8 +47,18 @@ and log in, nothing else.
   });
 </script>
 <button data-e9-login>Log in</button>
+<button data-e9-change-delegate hidden>Change your Delegate information</button>
 <div data-e9-min-level="1" hidden>Logged-in content (soft gate)</div>
 ```
+
+**Change your Delegate information** matters most with core, because roles
+often depend on the email address. Delegate remembers which address a person
+shares with your Domain, so logging in again returns the same one. The button
+reopens the share page so they can pick another. The new token fires
+`onChange`, which calls `id.core.login()` again and re-reads roles. Picking
+another address keeps the same Domain UNID and `person_id`; a different
+Google account is a different person to core. Show it next to Log out and
+on any access-denied message.
 
 Core's `/api/auth/*` routes are on whenever the host has `SESSION_SECRET`
 (setup writes it). Core takes the JWT `aud` from the page `Origin` header, so

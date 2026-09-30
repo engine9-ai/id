@@ -29,6 +29,12 @@ export const CONTENT_ATTRIBUTES = {
   login: 'data-e9-login',
   /** Click clears the stored identity. Value `delegate` also ends the delegate session. */
   logout: 'data-e9-logout',
+  /**
+   * "Change your Delegate information": shown when signed in. Click reopens
+   * delegate's consent page to pick another email address. Optional value is
+   * the minimum Level (default 1).
+   */
+  changeDelegate: 'data-e9-change-delegate',
   /** Comma-separated required fields a login button requests. */
   fields: 'data-e9-fields',
   /** Comma-separated optional fields a login button requests. */
@@ -152,7 +158,9 @@ export function bindContent(
       setVisible(el, !meetsLevel(identity, level));
     }
 
-    for (const el of Array.from(root.querySelectorAll(`[${CONTENT_ATTRIBUTES.logout}]`))) {
+    for (const el of Array.from(
+      root.querySelectorAll(`[${CONTENT_ATTRIBUTES.logout}], [${CONTENT_ATTRIBUTES.changeDelegate}]`),
+    )) {
       if (gateFromElement(el)) continue;
       setVisible(el, !id.isAnonymous);
     }
@@ -194,6 +202,18 @@ export function bindContent(
         fields,
         optionalFields,
         prompt,
+        mode: options.mode ?? 'popup',
+      }).catch(onError);
+      return;
+    }
+
+    const changeEl = target.closest(`[${CONTENT_ATTRIBUTES.changeDelegate}]`);
+    if (changeEl) {
+      event.preventDefault();
+      id.changeDelegateInfo({
+        minLevel: parseLevel(changeEl.getAttribute(CONTENT_ATTRIBUTES.changeDelegate)),
+        fields: parseFields(changeEl.getAttribute(CONTENT_ATTRIBUTES.fields)),
+        optionalFields: parseFields(changeEl.getAttribute(CONTENT_ATTRIBUTES.optionalFields)),
         mode: options.mode ?? 'popup',
       }).catch(onError);
       return;
@@ -266,6 +286,7 @@ export function mount(options: MountOptions = {}): MountedEngine9Id {
     requestIdentity: (opts) => id.requestIdentity(opts),
     handleCallback: () => id.handleCallback(),
     ensureLevel: (n, opts) => id.ensureLevel(n, opts),
+    changeDelegateInfo: (opts) => id.changeDelegateInfo(opts),
     logout: (opts) => id.logout(opts),
     onChange: (cb) => id.onChange(cb),
     gate: (opts) => id.gate(opts),

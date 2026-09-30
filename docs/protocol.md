@@ -21,13 +21,15 @@ product language in docs and APIs (except the JWT claim `aud`, which is RFC 7519
   recognize the person on return.
 - **User** — The authenticated person on delegate (today: a Firebase user,
   `firebaseUid`). Holds one set of fields (name, email, phone, attributes,
-  each contact with a verified flag). Not core's warehouse `person_id`,
+  each contact with a verified flag). A User may hold several email
+  addresses; one is the default. Not core's warehouse `person_id`,
   and not an admin "user" on the engine9 server. The Firebase uid is never
   sent to a Domain.
 - **Grant** — Remembered decision: share fields S with Domain D at Level L.
   Also stores what D requested, split into required fields R and optional
-  fields O. Keyed by (`firebase_uid`, `domain`). Created by the consent
-  page; revocable. A declined field was requested and is not in S.
+  fields O, and which of the User's email addresses D receives. Keyed by
+  (`firebase_uid`, `domain`). Created by the consent page; revocable. A
+  declined field was requested and is not in S.
 - **Domain** — The login consumer, identified by `host` or `host:port` when the
   port is not the default for the scheme (443 for https, empty for default http).
   Examples: `festival.engine9.ai`, `localhost:3000`. Query params and client
@@ -129,7 +131,8 @@ sub = aud ":" hex(HMAC-SHA256(UNID_PEPPER, "unid" ‖ 0x00 ‖ aud ‖ 0x00 ‖ 
 with `aud ":"`.
 
 `fields` shape (only fields the User shared; verified flags only with
-that contact):
+that contact). `email` is the address the User chose for this Domain, and
+`email_verified` is that address's flag:
 
 ```json
 {
@@ -181,7 +184,10 @@ Query:
 - `max_level` — 0–4 (optional cap)
 - `fields` — comma-separated required field names. When both this and `optional_fields` are empty, required defaults to `display_name,email`. A logged-out Level 0 request returns before that default.
 - `optional_fields` — comma-separated optional field names
-- `prompt` — `none` \| `select` \| `consent` \| `login`
+- `prompt` — `none` \| `select` \| `consent` \| `login`. `select` and
+  `consent` always show the consent page, even when the Grant already
+  covers the request (see [Change your Delegate information](#change-your-delegate-information)).
+  `login` sends a signed-out browser to sign in first.
 - `nonce`, `state` — opaque client values
 - `response_mode` — `fragment` (default) or `query`
 
@@ -198,16 +204,21 @@ Behavior:
 1. Resolve UNID and the User session. Find the active Grant for (User, Domain).
 2. If `prompt` is `none` or unset, and the Grant already covers this request
    (every requested field was answered before, every required field is shared
-   and has a value) at `min_level`, issue a token silently. A previously
-   declined optional field does not re-prompt.
+   and has a value, and the email address it chose is still on the User) at
+   `min_level`, issue a token silently. A previously declined optional field
+   does not re-prompt.
 3. If `prompt=none` and that is not possible, redirect with
    `error=interaction_required` (or `login_required`).
 4. Otherwise show consent: required fields locked, optional fields as
-   checkboxes, "Stay anonymous (Level 0)", and login when required. On Share,
-   `requested` is the union of the old list and this request, `required` is
-   this request's required list, and `shared` is what the User checked.
-   Declining a required field is the anonymous outcome (`level_unavailable`
-   when `min_level > 0`). Staying anonymous does not revoke an existing Grant.
+   checkboxes, the User's email addresses to pick from (the Grant's choice,
+   else the default, preselected), a link to add another address, a link to
+   use a different Google account, "Stay anonymous (Level 0)", and login when
+   required. On Share, `requested` is the union of the old list and this
+   request, `required` is this request's required list, `shared` is what the
+   User checked, and the picked address is stored on the Grant. A picked
+   address that is not on the User is `invalid_request`. Declining a required
+   field is the anonymous outcome (`level_unavailable` when `min_level > 0`).
+   Staying anonymous does not revoke an existing Grant.
 
 Success:
 
@@ -248,18 +259,56 @@ message rejects with `access_denied`.
 
 `GET /whoami` returns `{ unid, isNew, loggedIn, email, signInProvider }` for this browser, without an Identity Token. `GET /whoami/bridge?origin=` is the top-level popup that posts `{ "type": "delegate-whoami", unid, isNew, loggedIn, email, signInProvider }`.
 
+## Change your Delegate information
+
+A signed-in person can land on a Domain with the wrong address. For
+example, a site accepts only the address it has on file, and the person
+shared a different one. Show a **Change your Delegate information** button.
+It repeats the Domain's usual request with `prompt=select`
+(`/identity/authorize` or `/identity/bridge`). Delegate shows the consent
+page with the current Grant preselected. The person picks another address,
+adds one, or changes what is shared. Share updates the Grant and issues a
+new Identity Token. `sub` does not change because the User is the same.
+
+"Use a different Google account" on that page signs in as another User.
+That User has a different UNID, so the Domain receives a different `sub`.
+Adding an address keeps one User and one `sub` per Domain.
+
+`@engine9/id`: `id.changeDelegateInfo()` or a `data-e9-change-delegate`
+element. A server-side Site adds `prompt=select` to its usual authorize URL
+(`auth.identityUrl({ …, prompt: 'select' })` in `@engine9/core`).
+
+Sites should show this button to signed-in people unless they request no
+fields. Without it, a person with the wrong address has no way out: logging
+in again goes straight through with the remembered Grant. Put it next to Log
+out and on any access-denied message. Delegate needs no per-Domain setting
+for it.
+
 ## Fields and Grants (same-origin, User session required)
 
 - `GET /user/fields`
-- `PATCH /user/fields`
-- `GET /grants`
-- `PATCH /grants/:id` — body `{ shared }`
+- `PATCH /user/fields` — setting `email` adds that address and makes it the default
+- `GET /user/emails` — `{ emails: [{ email, verified, default }] }`
+- `POST /user/emails` — body `{ idToken }`: a Firebase ID token for the new
+  address (another Google account or an email sign-in link) with
+  `email_verified: true`. Adds the address as verified. The session stays on
+  the current User. Errors: `invalid_id_token`, `missing_email`,
+  `email_unverified`
+- `DELETE /user/emails/:email` — remove an address. Grants that chose it
+  show consent on next use
+- `GET /grants` — each Grant includes `email` (its chosen address, or null
+  for the default)
+- `PATCH /grants/:id` — body `{ shared, email? }`. `email` must be one of the
+  User's addresses (`invalid_request` otherwise)
 - `DELETE /grants/:id` — revoke a Domain
 - `POST /user/verify/email` — start Level 2 email confirmation
 - `POST /user/verify/phone` — start Level 2 phone confirmation
 - `POST /user/verify/confirm` — `{ channel, code }`
 
-Human page: `GET /user` — manage fields and connected Domains. The page posts `POST /grants/:id/fields` to change what is shared.
+Human pages: `GET /user` manages fields, email addresses, and connected
+Domains. It posts `POST /grants/:id/fields` (`share`, `email`) to change what
+a Domain receives. `GET /user/emails/add?return_to=<path>` adds an address,
+then returns to a path on delegate (the consent page links here).
 
 ## Logout
 

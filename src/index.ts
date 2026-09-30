@@ -36,6 +36,7 @@ export {
 export { createDelegateProvider } from './provider';
 
 export type {
+  ChangeDelegateInfoOptions,
   CoreClient,
   CoreConfig,
   CoreLoginResult,
