@@ -1,6 +1,6 @@
 {
   "name": "@engine9/id",
-  "version": "1.4.1",
+  "version": "1.4.5",
   "description": "Browser client for engine9 identity: add a delegate login button and Level-based content gates to any website with one script tag, verify Identity Tokens, and optionally talk to @engine9/core.",
   "type": "module",
   "license": "MIT",
