@@ -118,6 +118,8 @@ export interface Engine9IdConfig {
   /** Optional `@engine9/core` Site API. */
   core?: CoreConfig;
   fetchImpl?: FetchImpl;
+  /** Log each login step to the console (`[engine9-id]`). Default `false`. */
+  debug?: boolean;
 }
 
 export interface RequestIdentityOptions {

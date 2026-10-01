@@ -37,6 +37,8 @@ describe('listenForDelegateIdentity', () => {
     await expect(pending).rejects.toMatchObject({
       name: 'DelegateIdentityError',
       code: 'level_unavailable',
+      message: expect.stringContaining('did not share the fields'),
+      details: { step: 'popup', state: 's' },
     });
   });
 });

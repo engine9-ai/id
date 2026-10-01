@@ -1,4 +1,5 @@
-import { DelegateIdentityError } from './errors';
+import { DelegateIdentityError, delegateReturnedError } from './errors';
+import { LOG_PREFIX, type DebugLog } from './log';
 
 export const DELEGATE_IDENTITY_MESSAGE = 'delegate-identity';
 
@@ -11,6 +12,7 @@ export interface ListenForIdentityOptions {
   expectedOrigin: string;
   popup?: Window | null;
   signal?: AbortSignal;
+  log?: DebugLog;
 }
 
 function isIdentityMessage(
@@ -29,6 +31,7 @@ export function listenForDelegateIdentity(
   opts: ListenForIdentityOptions,
 ): Promise<DelegateIdentityMessage> {
   const { expectedOrigin, popup, signal } = opts;
+  const log = opts.log ?? (() => {});
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
       reject(new DelegateIdentityError('access_denied', 'Identity popup aborted'));
@@ -46,22 +49,28 @@ export function listenForDelegateIdentity(
     };
 
     const onMessage = (event: MessageEvent): void => {
-      if (event.origin !== expectedOrigin) return;
-      if (popup && event.source && event.source !== popup) return;
       if (!isIdentityMessage(event.data)) return;
       if (event.data.type !== DELEGATE_IDENTITY_MESSAGE) return;
+      if (event.origin !== expectedOrigin) {
+        console.warn(
+          LOG_PREFIX,
+          `Ignored a ${DELEGATE_IDENTITY_MESSAGE} message from ${event.origin}; expected ${expectedOrigin}. Check delegateUrl.`,
+        );
+        return;
+      }
+      if (popup && event.source && event.source !== popup) {
+        log('popup:message_from_other_window_ignored', { origin: event.origin });
+        return;
+      }
       if (typeof event.data.token !== 'string' || !event.data.token) {
         if (typeof event.data.error === 'string' && event.data.error) {
+          log('popup:error_received', { error: event.data.error });
           cleanup();
-          reject(
-            new DelegateIdentityError(
-              event.data.error,
-              `Delegate returned ${event.data.error}`,
-            ),
-          );
+          reject(delegateReturnedError(event.data.error, { step: 'popup', state: event.data.state }));
         }
         return;
       }
+      log('popup:token_received', { tokenLength: event.data.token.length });
       cleanup();
       resolve({
         token: event.data.token,
@@ -79,6 +88,7 @@ export interface OpenIdentityPopupOptions {
   expectedOrigin: string;
   name?: string;
   features?: string;
+  log?: DebugLog;
 }
 
 /**
@@ -88,12 +98,18 @@ export interface OpenIdentityPopupOptions {
 export function openIdentityPopup(
   opts: OpenIdentityPopupOptions,
 ): Promise<DelegateIdentityMessage | null> {
+  const log = opts.log ?? (() => {});
   const popup = window.open(
     opts.url,
     opts.name ?? 'engine9-identity',
     opts.features ?? 'popup=yes,width=480,height=720',
   );
-  if (!popup) return Promise.resolve(null);
+  if (!popup) {
+    log('popup:blocked', { url: opts.url });
+    return Promise.resolve(null);
+  }
+  const openedAt = Date.now();
+  log('popup:opened', { url: opts.url, expectedOrigin: opts.expectedOrigin });
 
   const controller = new AbortController();
   const closed = new Promise<never>((_, reject) => {
@@ -101,7 +117,18 @@ export function openIdentityPopup(
       if (popup.closed) {
         window.clearInterval(timer);
         controller.abort();
-        reject(new DelegateIdentityError('access_denied', 'Identity popup closed'));
+        const openForMs = Date.now() - openedAt;
+        log('popup:closed_without_message', { openForMs });
+        reject(
+          new DelegateIdentityError(
+            'access_denied',
+            `Identity popup closed after ${Math.round(openForMs / 1000)}s without sending an Identity Token. ` +
+              'Either it was closed by hand, or it lost its link to this page: a page shown in it sent ' +
+              'Cross-Origin-Opener-Policy (a Cloudflare bot check on Delegate does this), and the browser ' +
+              "then reports the window as closed. If this repeats, use mode: 'redirect'.",
+            { step: 'popup', reason: 'popup_closed', openForMs, url: opts.url },
+          ),
+        );
       }
     }, 300);
     controller.signal.addEventListener('abort', () => window.clearInterval(timer));
@@ -112,6 +139,7 @@ export function openIdentityPopup(
       expectedOrigin: opts.expectedOrigin,
       popup,
       signal: controller.signal,
+      log,
     }).finally(() => {
       controller.abort();
       try {

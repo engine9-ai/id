@@ -1,6 +1,7 @@
 import { createCoreClient } from './core';
-import { DelegateIdentityError } from './errors';
+import { DelegateIdentityError, delegateReturnedError } from './errors';
 import { meetsGate, meetsLevel } from './levels';
+import { createDebugLog } from './log';
 import { openIdentityPopup } from './popup';
 import { createDelegateProvider } from './provider';
 import { randomId } from './random';
@@ -80,6 +81,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
   const storage = createStorage(config.storage ?? 'session');
   const fetchImpl: FetchImpl = config.fetchImpl ?? defaultFetch;
   const provider = resolveProvider(config, fetchImpl);
+  const log = createDebugLog(config.debug);
   const listeners = new Set<(identity: Identity | null) => void>();
 
   const notify = (identity: Identity | null): void => {
@@ -97,10 +99,28 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     readStoredIdentity(storage.get(STORAGE_KEYS.identity));
 
   const verifyAndStore = async (token: string, nonce?: string): Promise<Identity> => {
-    const identity = await provider.verifyToken(token, { domain, nonce });
+    log('verify', { domain, tokenLength: token.length, nonce: Boolean(nonce) });
+    let identity: Identity;
+    try {
+      identity = await provider.verifyToken(token, { domain, nonce });
+    } catch (err) {
+      log('verify:failed', {
+        code: err instanceof DelegateIdentityError ? err.code : undefined,
+        message: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
+    }
+    log('verify:ok', { level: identity.level, exp: identity.exp });
     persist(identity, token);
     return identity;
   };
+
+  const stateMismatch = (expected: string | null | undefined, received: string | undefined) =>
+    new DelegateIdentityError(
+      'invalid_request',
+      'state mismatch: the Identity Token answers a different request (another tab, or an older popup or redirect). Start the login again.',
+      { step: 'state', expected: expected ?? null, received: received ?? null },
+    );
 
   const beginRequest = (): { nonce: string; state: string } => {
     const nonce = randomId();
@@ -118,6 +138,14 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     }
     const { nonce, state } = beginRequest();
     const returnTo = opts.returnTo ?? currentHref();
+    log('request', {
+      mode: opts.mode,
+      domain,
+      minLevel: opts.minLevel,
+      maxLevel: opts.maxLevel,
+      prompt: opts.prompt,
+      fields: opts.fields,
+    });
     const shared = {
       domain,
       minLevel: opts.minLevel,
@@ -130,6 +158,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     };
 
     if (opts.mode === 'redirect') {
+      log('redirect', { returnTo });
       assignLocation(
         await provider.buildAuthorizeUrl({
           ...shared,
@@ -151,16 +180,25 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       return;
     }
 
-    const discovery = await provider.discover();
+    let discovery;
+    try {
+      discovery = await provider.discover();
+    } catch (err) {
+      log('discovery:failed', { message: err instanceof Error ? err.message : String(err) });
+      throw err;
+    }
     const popupUrl = await provider.buildBridgeUrl(shared);
     const expectedOrigin = provider.messageOrigin
       ? provider.messageOrigin(discovery)
       : new URL(discovery.issuer).origin;
+    log('discovery', { issuer: discovery.issuer, expectedOrigin });
     const message = await openIdentityPopup({
       url: popupUrl,
       expectedOrigin,
+      log,
     });
     if (!message) {
+      log('popup:fallback_to_redirect', { returnTo });
       assignLocation(
         await provider.buildAuthorizeUrl({
           ...shared,
@@ -171,7 +209,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       return;
     }
     if (message.state && message.state !== state) {
-      throw new DelegateIdentityError('invalid_request', 'state mismatch');
+      throw stateMismatch(state, message.state);
     }
     storage.remove(STORAGE_KEYS.nonce);
     storage.remove(STORAGE_KEYS.state);
@@ -185,6 +223,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
         : undefined;
     const parsed = parseDelegateCallback(loc);
     if (!parsed) return null;
+    log('callback', { error: parsed.error, token: Boolean(parsed.token), state: Boolean(parsed.state) });
 
     const clean = (): void => {
       if (typeof location === 'undefined' || typeof history === 'undefined') return;
@@ -193,15 +232,12 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
 
     try {
       if (parsed.error) {
-        throw new DelegateIdentityError(
-          parsed.error,
-          `Delegate returned ${parsed.error}`,
-        );
+        throw delegateReturnedError(parsed.error, { step: 'callback', state: parsed.state });
       }
       if (!parsed.token) return null;
       const expectedState = storage.get(STORAGE_KEYS.state);
       if (expectedState && parsed.state !== expectedState) {
-        throw new DelegateIdentityError('invalid_request', 'state mismatch');
+        throw stateMismatch(expectedState, parsed.state);
       }
       const nonce = storage.get(STORAGE_KEYS.nonce) ?? undefined;
       const identity = await verifyAndStore(parsed.token, nonce);
@@ -233,8 +269,11 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
           prompt: 'none',
         });
         if (silent && meetsLevel(silent, n)) return silent;
-      } catch {
-        // interaction required — continue
+      } catch (err) {
+        log('silent:failed', {
+          code: err instanceof DelegateIdentityError ? err.code : undefined,
+          message: err instanceof Error ? err.message : String(err),
+        });
       }
     }
     return requestIdentity({
