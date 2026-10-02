@@ -188,6 +188,10 @@ Query:
   `consent` always show the consent page, even when the Grant already
   covers the request (see [Change your Delegate information](#change-your-delegate-information)).
   `login` sends a signed-out browser to sign in first.
+- `login_level` — `2` or `3` (default `3`). Which sign-in screen a
+  signed-out browser sees. `3` offers Google only; `2` adds an email sign-in
+  link. Ignored (treated as `3`) when `min_level` is 3 or more. See
+  [Sign-in screen](#sign-in-screen-login_level).
 - `nonce`, `state` — opaque client values
 - `response_mode` — `fragment` (default) or `query`
 
@@ -232,9 +236,56 @@ Error: `return_to?error=<code>&state=<state>`
 Codes: `interaction_required`, `login_required`, `level_unavailable`,
 `access_denied`, `invalid_domain`, `invalid_request`.
 
+## Sign-in screen (`login_level`)
+
+When a request needs a signed-in User and the browser has no Delegate
+session, `/identity/authorize` and `/identity/bridge` redirect to
+`/login?return_to=<the same request>`. Delegate has two sign-in screens.
+
+| `login_level` | Screen | Sign-in methods | Highest Level that sign-in can reach |
+| --- | --- | --- | --- |
+| omitted, `3`, or `4` (default) | Trusted provider | Sign in with Google | 4 (3, plus a second factor) |
+| `2` | Contact confirmation | Sign in with Google, **or** "Email me a sign-in link" | 2 for the email link; 3–4 for Google |
+
+Why the default has no email link: a link in an inbox proves the person
+controls that address. That is Level 2 (Contact Confirmed), never Level 3.
+A site that needs Level 3 or 4 would accept the email-link sign-in and then
+still fail with `level_unavailable`. So the email link is offered only when
+the Domain asks for it.
+
+Rules:
+
+- The Domain chooses with `login_level` on `/identity/authorize` or
+  `/identity/bridge`. Delegate carries it to `/login` as `login_level=2`.
+  Any value other than `2` means the default screen.
+- `min_level` of 3 or more always gets the default screen, even with
+  `login_level=2`.
+- The screen only limits which buttons are shown. It does not set or cap
+  the token's `level`. Level assignment ([below](#level-assignment)) and
+  `min_level` / `max_level` still decide it. A User who already has a
+  Delegate session (from either screen) is not shown a sign-in screen.
+- An email link opened later finishes on whichever screen it lands on. The
+  link returns to the `/login` URL that sent it, including `login_level=2`.
+- Sites that link to `/login` directly (not through authorize) can add
+  `login_level=2` themselves.
+
+Typical choices:
+
+| The site needs | Send |
+| --- | --- |
+| Level 0–1 (a name, a newsletter signup) and wants the fewest steps for people without Google | `min_level=1&login_level=2` |
+| Level 2: an email address the person really receives | `min_level=2&login_level=2` |
+| Level 3–4: a trusted provider (members' areas, admin, payments) | `min_level=3` (no `login_level`) |
+| No preference | nothing: Google only |
+
+`@engine9/id`: `createEngine9Id({ loginLevel: 2 })` or `mount({ loginLevel: 2 })`
+for every login, `requestIdentity({ …, loginLevel: 2 })` for one request, or
+`data-e9-login-level="2"` on a login button. `@engine9/core`:
+`auth.identityUrl({ …, loginLevel: 2 })`.
+
 ## Bridge (popup)
 
-`GET /identity/bridge?domain=<host[:port]>&min_level=&prompt=&nonce=&state=`
+`GET /identity/bridge?domain=<host[:port]>&min_level=&prompt=&login_level=&nonce=&state=`
 
 Top-level popup so SameSite=Lax cookies apply. Same consent logic as authorize.
 On success, `postMessage` to `window.opener`:
@@ -326,7 +377,8 @@ Implemented in delegate `src/lib/levels.ts`.
 - **1 Provided** — The User shared fields, and none of those contacts are verified.
 - **2 Contact Confirmed** — The User has `email_verified` or
   `phone_verified`, or the User signed in with Firebase `password` /
-  `emailLink` and the email is verified.
+  `emailLink` and the email is verified. Email-link sign-in is offered only
+  on the `login_level=2` screen ([Sign-in screen](#sign-in-screen-login_level)).
 - **3 Trusted Provider Confirmed** — User authenticated via a provider in
   `TRUSTED_PROVIDERS` (default `google.com`), and `auth_time` is within
   `MAX_AUTH_AGE_SECONDS` (default 86400).

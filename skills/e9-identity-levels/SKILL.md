@@ -23,3 +23,8 @@ Wire protocol and implemented 0–4 assignment:
 - Do not label a provider as a level (“Google = 4”). Google + fresh MFA can
   *qualify* for Level 4; the token `level` is computed per event.
 - Levels 5–7 are reserved (real-world proofing). Do not invent endpoints.
+- Delegate's sign-in screen defaults to Google only (Level 3–4). An emailed
+  sign-in link reaches Level 2 at most and is shown only when the site sends
+  `loginLevel: 2` (`login_level=2`) with `minLevel` ≤ 2. The screen never
+  sets the token's Level. See
+  [`docs/protocol.md#sign-in-screen-login_level`](../../docs/protocol.md#sign-in-screen-login_level).

@@ -132,3 +132,47 @@ describe('changeDelegateInfo', () => {
     );
   });
 });
+
+describe('loginLevel', () => {
+  function redirectingClient(loginLevel?: 2 | 3) {
+    const buildAuthorizeUrl = vi.fn(() => '#login');
+    const id = createEngine9Id({
+      domain: DOMAIN,
+      storage: 'memory',
+      loginLevel,
+      provider: {
+        id: 'test',
+        discover: () => Promise.reject(new Error('unused')),
+        verifyToken: () => Promise.reject(new Error('unused')),
+        buildAuthorizeUrl,
+      },
+    });
+    return { id, buildAuthorizeUrl };
+  }
+
+  afterEach(() => setPageUrl('/'));
+
+  it('sends nothing by default, so delegate shows the Google-only screen', async () => {
+    const { id, buildAuthorizeUrl } = redirectingClient();
+    await id.requestIdentity({ minLevel: 1, mode: 'redirect' });
+    expect(buildAuthorizeUrl).toHaveBeenLastCalledWith(
+      expect.objectContaining({ loginLevel: undefined }),
+    );
+  });
+
+  it('applies the client loginLevel to every request, and a request can override it', async () => {
+    const { id, buildAuthorizeUrl } = redirectingClient(2);
+    await id.requestIdentity({ minLevel: 1, mode: 'redirect' });
+    expect(buildAuthorizeUrl).toHaveBeenLastCalledWith(
+      expect.objectContaining({ loginLevel: 2 }),
+    );
+    await id.requestIdentity({ minLevel: 1, mode: 'redirect', loginLevel: 3 });
+    expect(buildAuthorizeUrl).toHaveBeenLastCalledWith(
+      expect.objectContaining({ loginLevel: 3 }),
+    );
+    await id.ensureLevel(2, { mode: 'redirect' });
+    expect(buildAuthorizeUrl).toHaveBeenLastCalledWith(
+      expect.objectContaining({ loginLevel: 2 }),
+    );
+  });
+});

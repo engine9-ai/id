@@ -3,6 +3,7 @@ import type {
   DelegateConfiguration,
   FetchImpl,
   Identity,
+  LoginLevel,
   Prompt,
   ResponseMode,
 } from './types';
@@ -26,6 +27,7 @@ export interface BuildAuthorizeOptions {
   fields?: string[];
   optionalFields?: string[];
   prompt?: Prompt;
+  loginLevel?: LoginLevel;
   nonce?: string;
   state?: string;
   responseMode?: ResponseMode;
@@ -38,6 +40,7 @@ export interface BuildBridgeOptions {
   fields?: string[];
   optionalFields?: string[];
   prompt?: Prompt;
+  loginLevel?: LoginLevel;
   nonce?: string;
   state?: string;
 }
@@ -106,6 +109,7 @@ export function createDelegateProvider(
         fields: opts.fields,
         optionalFields: opts.optionalFields,
         prompt: opts.prompt,
+        loginLevel: opts.loginLevel,
         nonce: opts.nonce,
         state: opts.state,
         responseMode: opts.responseMode,
@@ -123,6 +127,7 @@ export function createDelegateProvider(
         fields: opts.fields,
         optionalFields: opts.optionalFields,
         prompt: opts.prompt,
+        loginLevel: opts.loginLevel,
         nonce: opts.nonce,
         state: opts.state,
         bridgeEndpoint: discovery.identity_bridge_endpoint,

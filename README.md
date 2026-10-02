@@ -98,8 +98,10 @@ That is the whole integration. Serve the page over `http://` or `https://`
 
 ### What the visitor sees
 
-1. A delegate window opens. First-time visitors sign in to delegate (Google
-   or email). Returning visitors are already signed in.
+1. A delegate window opens. First-time visitors sign in to delegate with
+   Google. (Your site can also offer an emailed sign-in link; see
+   [Sign-in screens](#sign-in-screens-google-only-or-google-plus-an-email-link).)
+   Returning visitors are already signed in.
 2. Delegate asks which fields (name, email) to share with your Domain.
    Required fields are part of logging in; optional fields are checkboxes.
    Delegate remembers that choice as a **Grant**, so the next login on your
@@ -141,6 +143,7 @@ Buttons and text:
 | `data-e9-fields="given_name,email"`    | Required fields the button requests. Default: `display_name`, `email`        |
 | `data-e9-optional-fields="phone"`      | Optional fields. Declining one does not drop the visitor to Level 0          |
 | `data-e9-prompt="select"`              | Always show the field form again                                              |
+| `data-e9-login-level="2"`              | Delegate's sign-in screen also offers an emailed sign-in link (default: Google only). See [Sign-in screens](#sign-in-screens-google-only-or-google-plus-an-email-link) |
 | `data-e9-logout`                       | Click forgets the identity on this website                                   |
 | `data-e9-logout="delegate"`            | Also signs the visitor out of delegate itself, then returns to this page     |
 | `data-e9-change-delegate`              | "Change your Delegate information": reopens delegate to pick another email address or change what is shared. Value is the minimum Level (default 1) |
@@ -182,6 +185,14 @@ Level 2 needs an email or phone delegate has confirmed (visitors do that once
 on their delegate details page, or by signing in to delegate with a verified
 email). Declining a required field returns `level_unavailable` to `onError`,
 so keep a "why" sentence next to the button.
+
+Signing in with Google already counts as Level 3, which is more than Level 2.
+To let people without Google in too, add `data-e9-login-level="2"`. Delegate
+then also offers "Email me a sign-in link":
+
+```html
+<button data-e9-login="2" data-e9-login-level="2">Confirm email</button>
+```
 
 ### Example: the site does not know that address
 
@@ -292,6 +303,7 @@ Every option is optional.
 | `fields`      | delegate default               | Required fields login buttons request                            |
 | `mode`        | `'popup'`                      | `'redirect'` sends the whole page to delegate and back           |
 | `prompt`      | —                              | `'select'` always shows the chooser                              |
+| `loginLevel`  | `3` (Google only)              | `2` also offers an emailed sign-in link. See [Sign-in screens](#sign-in-screens-google-only-or-google-plus-an-email-link) |
 | `root`        | `document`                     | Where to look for `data-e9-*` elements                           |
 | `onError`     | `console.warn`                 | Called when login fails or a redirect returns `error=`           |
 | `storage`     | `'local'`                      | `'session'` forgets on tab close; `'memory'` on page unload      |
@@ -321,6 +333,59 @@ today. Names and descriptions are available from `engine9Id.describeLevel(n)`.
 Pick the lowest Level that does the job. Level 1 is right for "log in to keep
 reading". Level 2 is right when you will email the person. Level 3 or 4 is
 right when you want a stronger sign that this is the same human each time.
+
+## Sign-in screens: Google only, or Google plus an email link
+
+When a visitor is not signed in to delegate yet, delegate shows one of two
+sign-in screens. Your site picks which one with `loginLevel`.
+
+| `loginLevel`        | The visitor sees                                      | Use it when                                                |
+| ------------------- | ----------------------------------------------------- | ---------------------------------------------------------- |
+| `3` (default) or `4` | **Sign in with Google** only                         | You need Level 3 or 4, or have no reason to change it       |
+| `2`                 | **Sign in with Google**, or **Email me a sign-in link** | Level 0–2 is enough and you want people without Google too |
+
+**Why Google only is the default.** An emailed link proves the person can
+read that inbox. That is Level 2 (Contact Confirmed) and never more. If your
+site asks for Level 3 or 4 and the visitor signs in with an email link,
+delegate still cannot issue the Level you need, and the login ends in
+`level_unavailable`. Showing only trusted providers avoids that dead end.
+
+**Turn on the email link for the whole site:**
+
+```js
+const id = engine9Id.mount({ loginLevel: 2 });
+// or: createEngine9Id({ loginLevel: 2 })
+```
+
+**Only for one button:**
+
+```html
+<button data-e9-login data-e9-login-level="2">Get the newsletter</button>
+```
+
+**Only for one call** (overrides the site-wide setting either way):
+
+```js
+await id.requestIdentity({ minLevel: 2, mode: 'popup', loginLevel: 2 });
+await id.ensureLevel(3, { loginLevel: 3 }); // members area: Google only
+```
+
+What `loginLevel` does **not** do:
+
+- It does not set the Level on the token. `minLevel` / `maxLevel` and how
+  the visitor actually signed in decide that. A visitor on the `2` screen who
+  picks Google still gets Level 3.
+- It cannot lower a requirement. With `minLevel: 3` or higher, delegate
+  shows Google only even when you pass `loginLevel: 2`.
+- It does nothing for visitors who are already signed in to delegate. They
+  skip the sign-in screen entirely.
+- It is a soft browser setting, like every other option here. Your server
+  (or `@engine9/core` roles) still decides what a Level is allowed to do.
+
+On the wire this is `login_level=2` on `/identity/authorize` and
+`/identity/bridge` ([protocol](./docs/protocol.md#sign-in-screen-login_level)).
+Server-side sites using `@engine9/core` pass `loginLevel: 2` to
+`auth.identityUrl()`.
 
 ## What a browser-only login can and cannot do
 
@@ -398,13 +463,13 @@ Guides: [with-core](./docs/with-core.md), [declared roles](./docs/declared-roles
 
 ### Full client API
 
-`createEngine9Id({ provider?, delegateUrl?, domain?, storage?, core?, fetchImpl? })`
+`createEngine9Id({ provider?, delegateUrl?, domain?, storage?, core?, fetchImpl?, loginLevel? })`
 
 | Method | What it does |
 | ------ | ------------ |
 | `getIdentity()` | Verified, unexpired token payload, or `null` |
 | `getDomainUnid()` | `identity.sub`, else the last stored Domain UNID |
-| `requestIdentity({ minLevel, maxLevel?, fields?, prompt?, mode, returnTo?, responseMode? })` | Start login. `popup` opens `/identity/bridge`; `redirect` navigates to `/identity/authorize` |
+| `requestIdentity({ minLevel, maxLevel?, fields?, prompt?, loginLevel?, mode, returnTo?, responseMode? })` | Start login. `popup` opens `/identity/bridge`; `redirect` navigates to `/identity/authorize`. `loginLevel: 2` adds the email sign-in link |
 | `handleCallback()` | Read `#delegate_token` or `?delegate_token` on return, verify, store, clean the URL |
 | `ensureLevel(n, opts?)` | No-op if already at `n`; otherwise try silently, then interactively |
 | `changeDelegateInfo(opts?)` | "Change your Delegate information": `prompt=select` with the current Grant's fields, so the visitor can pick another email address. Options as `requestIdentity`, all optional (default Level 1, popup) |

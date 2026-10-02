@@ -19,3 +19,19 @@ Levels 5–7 (real-world proofing) are reserved. Tokens do not emit
 Use `describeLevel(n)` and `meetsLevel(identity, n)` from `@engine9/id/levels`.
 Sites should set `minimum_identity_level` per feature and call
 `ensureLevel(n)` to step up.
+
+## Sign-in screen
+
+Delegate's sign-in screen offers Google only by default, because Google
+sign-in is what reaches Level 3–4. An emailed sign-in link reaches Level 2
+at most, so delegate shows it only when the site sends `loginLevel: 2`
+(`login_level=2`), and never when `minLevel` is 3 or more. The screen does
+not change the Level a sign-in earns.
+
+| Site option | Screen |
+| --- | --- |
+| none, `loginLevel: 3`, or `loginLevel: 4` | Google |
+| `loginLevel: 2` (with `minLevel` 0–2) | Google, or email me a sign-in link |
+
+Details: [README](../README.md#sign-in-screens-google-only-or-google-plus-an-email-link),
+[protocol](./protocol.md#sign-in-screen-login_level).

@@ -8,6 +8,19 @@ export type Prompt = 'none' | 'select' | 'consent' | 'login';
 
 export type ResponseMode = 'fragment' | 'query';
 
+/**
+ * Which delegate sign-in screen a logged-out visitor sees (`login_level`).
+ *
+ * - `3` (default; `4` is the same screen): trusted providers only (Google).
+ * - `2`: Google **or** "Email me a sign-in link".
+ *
+ * An email link proves the visitor controls the address, which is Level 2
+ * (Contact Confirmed) and never more. Delegate ignores `2` when `minLevel` is
+ * 3 or higher. The screen does not set the token's Level; `minLevel` and
+ * `maxLevel` do. See docs/protocol.md#sign-in-screen-login_level.
+ */
+export type LoginLevel = 2 | 3 | 4;
+
 export type FetchImpl = (
   input: string | URL,
   init?: RequestInit,
@@ -78,6 +91,7 @@ export interface Engine9IdProvider {
     fields?: string[];
     optionalFields?: string[];
     prompt?: Prompt;
+    loginLevel?: LoginLevel;
     nonce?: string;
     state?: string;
     responseMode?: ResponseMode;
@@ -89,6 +103,7 @@ export interface Engine9IdProvider {
     fields?: string[];
     optionalFields?: string[];
     prompt?: Prompt;
+    loginLevel?: LoginLevel;
     nonce?: string;
     state?: string;
   }): Promise<string> | string;
@@ -120,6 +135,12 @@ export interface Engine9IdConfig {
   fetchImpl?: FetchImpl;
   /** Log each login step to the console (`[engine9-id]`). Default `false`. */
   debug?: boolean;
+  /**
+   * Delegate sign-in screen for every login from this client. Default `3`
+   * (Google only). `2` also offers an email sign-in link. Each request can
+   * override it. See `LoginLevel`.
+   */
+  loginLevel?: LoginLevel;
 }
 
 export interface RequestIdentityOptions {
@@ -128,6 +149,8 @@ export interface RequestIdentityOptions {
   fields?: string[];
   optionalFields?: string[];
   prompt?: Prompt;
+  /** Sign-in screen for this request. Default: the client's `loginLevel`, else `3`. */
+  loginLevel?: LoginLevel;
   mode: IdentityMode;
   returnTo?: string;
   responseMode?: ResponseMode;
@@ -143,6 +166,7 @@ export interface ChangeDelegateInfoOptions {
   maxLevel?: number;
   fields?: string[];
   optionalFields?: string[];
+  loginLevel?: LoginLevel;
   mode?: IdentityMode;
   returnTo?: string;
   responseMode?: ResponseMode;
@@ -154,6 +178,7 @@ export interface EnsureLevelOptions {
   fields?: string[];
   optionalFields?: string[];
   prompt?: Prompt;
+  loginLevel?: LoginLevel;
   returnTo?: string;
   responseMode?: ResponseMode;
 }

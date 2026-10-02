@@ -55,6 +55,7 @@ export type {
   IdentityFields,
   Jwk,
   Jwks,
+  LoginLevel,
   Prompt,
   RequestIdentityOptions,
   ResponseMode,

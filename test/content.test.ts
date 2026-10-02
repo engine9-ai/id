@@ -196,6 +196,24 @@ describe('bindContent', () => {
     );
   });
 
+  it('data-e9-login-level="2" asks delegate for the email-link screen', () => {
+    const root = html(PAGE + '<button id="magic" data-e9-login="2" data-e9-login-level="2">Email me a link</button>');
+    const id = createEngine9Id({ domain: DOMAIN, storage: 'memory' });
+    const request = vi
+      .spyOn(id, 'requestIdentity')
+      .mockResolvedValue(undefined as unknown as void);
+    bindContent(id, { root });
+
+    q(root, '#magic').click();
+    expect(request).toHaveBeenLastCalledWith(
+      expect.objectContaining({ minLevel: 2, loginLevel: 2 }),
+    );
+    q(root, '#login').click();
+    expect(request).toHaveBeenLastCalledWith(
+      expect.objectContaining({ loginLevel: undefined }),
+    );
+  });
+
   it('reports login errors through onError and logout buttons clear identity', async () => {
     const root = html(PAGE);
     const id = createEngine9Id({ domain: DOMAIN, storage: 'memory' });

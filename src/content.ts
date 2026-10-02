@@ -15,6 +15,7 @@ import type {
   Engine9IdConfig,
   Identity,
   IdentityMode,
+  LoginLevel,
   Prompt,
 } from './types';
 
@@ -41,6 +42,11 @@ export const CONTENT_ATTRIBUTES = {
   optionalFields: 'data-e9-optional-fields',
   /** `prompt` a login button sends (`select` forces the consent page). */
   prompt: 'data-e9-prompt',
+  /**
+   * Delegate sign-in screen a login button asks for. `2` adds an email
+   * sign-in link to Google; otherwise Google only. See `LoginLevel`.
+   */
+  loginLevel: 'data-e9-login-level',
   /** Replace text with a shared field (`given_name`, `email`, …). */
   field: 'data-e9-field',
   /** Replace text with the Level number, or its name when the value is `name`. */
@@ -92,6 +98,11 @@ function parseFields(raw: string | null): string[] | undefined {
     .map((s) => s.trim())
     .filter(Boolean);
   return fields.length ? fields : undefined;
+}
+
+function parseLoginLevel(raw: string | null): LoginLevel | undefined {
+  const n = Number(raw);
+  return raw !== null && (n === 2 || n === 3 || n === 4) ? n : undefined;
 }
 
 function parsePrompt(raw: string | null): Prompt | undefined {
@@ -202,6 +213,7 @@ export function bindContent(
         fields,
         optionalFields,
         prompt,
+        loginLevel: parseLoginLevel(loginEl.getAttribute(CONTENT_ATTRIBUTES.loginLevel)),
         mode: options.mode ?? 'popup',
       }).catch(onError);
       return;
@@ -214,6 +226,7 @@ export function bindContent(
         minLevel: parseLevel(changeEl.getAttribute(CONTENT_ATTRIBUTES.changeDelegate)),
         fields: parseFields(changeEl.getAttribute(CONTENT_ATTRIBUTES.fields)),
         optionalFields: parseFields(changeEl.getAttribute(CONTENT_ATTRIBUTES.optionalFields)),
+        loginLevel: parseLoginLevel(changeEl.getAttribute(CONTENT_ATTRIBUTES.loginLevel)),
         mode: options.mode ?? 'popup',
       }).catch(onError);
       return;

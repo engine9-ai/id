@@ -138,12 +138,14 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     }
     const { nonce, state } = beginRequest();
     const returnTo = opts.returnTo ?? currentHref();
+    const loginLevel = opts.loginLevel ?? config.loginLevel;
     log('request', {
       mode: opts.mode,
       domain,
       minLevel: opts.minLevel,
       maxLevel: opts.maxLevel,
       prompt: opts.prompt,
+      loginLevel,
       fields: opts.fields,
     });
     const shared = {
@@ -153,6 +155,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       fields: opts.fields,
       optionalFields: opts.optionalFields,
       prompt: opts.prompt,
+      loginLevel,
       nonce,
       state,
     };
@@ -267,6 +270,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
           returnTo: opts.returnTo,
           responseMode: opts.responseMode,
           prompt: 'none',
+          loginLevel: opts.loginLevel,
         });
         if (silent && meetsLevel(silent, n)) return silent;
       } catch (err) {
@@ -285,6 +289,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       returnTo: opts.returnTo,
       responseMode: opts.responseMode,
       prompt: opts.prompt,
+      loginLevel: opts.loginLevel,
     });
   };
 
@@ -303,6 +308,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       returnTo: opts.returnTo,
       responseMode: opts.responseMode,
       prompt: 'select',
+      loginLevel: opts.loginLevel,
     });
   };
 

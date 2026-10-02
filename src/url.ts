@@ -26,6 +26,8 @@ export interface AuthorizeUrlOptions {
   fields?: string[] | string;
   optionalFields?: string[] | string;
   prompt?: string;
+  /** `login_level`: delegate sign-in screen. `2` adds an email sign-in link. */
+  loginLevel?: number;
   nonce?: string;
   state?: string;
   responseMode?: 'fragment' | 'query';
@@ -40,6 +42,7 @@ export interface BridgeUrlOptions {
   fields?: string[] | string;
   optionalFields?: string[] | string;
   prompt?: string;
+  loginLevel?: number;
   nonce?: string;
   state?: string;
   bridgeEndpoint?: string;
@@ -78,6 +81,7 @@ export function authorizeUrl(opts: AuthorizeUrlOptions): string {
   setOptional(url.searchParams, 'fields', fieldsParam(opts.fields));
   setOptional(url.searchParams, 'optional_fields', fieldsParam(opts.optionalFields));
   setOptional(url.searchParams, 'prompt', opts.prompt);
+  setOptional(url.searchParams, 'login_level', opts.loginLevel);
   setOptional(url.searchParams, 'nonce', opts.nonce);
   setOptional(url.searchParams, 'state', opts.state);
   setOptional(url.searchParams, 'response_mode', opts.responseMode);
@@ -95,6 +99,7 @@ export function bridgeUrl(opts: BridgeUrlOptions): string {
   setOptional(url.searchParams, 'fields', fieldsParam(opts.fields));
   setOptional(url.searchParams, 'optional_fields', fieldsParam(opts.optionalFields));
   setOptional(url.searchParams, 'prompt', opts.prompt);
+  setOptional(url.searchParams, 'login_level', opts.loginLevel);
   setOptional(url.searchParams, 'nonce', opts.nonce);
   setOptional(url.searchParams, 'state', opts.state);
   return url.toString();

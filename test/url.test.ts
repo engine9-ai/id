@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { authorizeUrl, domainFromUrl } from '../src/url';
+import { authorizeUrl, bridgeUrl, domainFromUrl } from '../src/url';
 
 describe('domainFromUrl', () => {
   it('returns host only for default ports', () => {
@@ -28,5 +28,16 @@ describe('authorizeUrl', () => {
     });
     expect(url).toContain('domain=site.example');
     expect(url).not.toContain('site=');
+  });
+
+  it('sends login_level only when asked', () => {
+    const base = {
+      delegateUrl: 'https://delegate.engine9.ai',
+      domain: 'site.example',
+      returnTo: 'https://site.example/callback',
+    };
+    expect(new URL(authorizeUrl(base)).searchParams.has('login_level')).toBe(false);
+    expect(new URL(authorizeUrl({ ...base, loginLevel: 2 })).searchParams.get('login_level')).toBe('2');
+    expect(new URL(bridgeUrl({ ...base, loginLevel: 2 })).searchParams.get('login_level')).toBe('2');
   });
 });
