@@ -52,14 +52,21 @@ You need:
 
 You do **not** need a database, an API key, Cloudflare, or `@engine9/core`.
 
-## Step 1 — Add the script
+## Step 1 — Add the script and the Login button
+
+The **login widget** is how visitors interact with Delegate: one **Login**
+button that opens a dialog on your page to log in with Google, switch email,
+change role, and log out. Put it in your header on every page.
 
 **Plain HTML** (fastest):
 
 ```html
+<span data-e9-login-widget></span>
+
 <script src="https://unpkg.com/@engine9/id@1/dist/id.iife.js"></script>
 <script>
   const id = engine9Id.mount();
+  engine9Id.loginWidget({ id, fields: ["given_name", "family_name", "email"] });
 </script>
 ```
 
@@ -71,47 +78,52 @@ npm install @engine9/id
 
 ```js
 import { mount } from "@engine9/id";
+import { loginWidget } from "@engine9/id/widget";
 
 const id = mount();
+loginWidget({ id, fields: ["given_name", "family_name", "email"] });
 ```
 
 `mount()` creates the client, finishes a login that is returning to this
-page, and keeps `data-e9-*` elements (Step 2 and 3) in sync. Call it once on
-every page that has a login button or gated content, in browser code.
+page, and keeps `data-e9-*` elements (Step 3) in sync. `loginWidget()` puts
+the Login button in the `data-e9-login-widget` element. Call both once on
+every page, in browser code.
 
-Delegate is the default identity provider. You only set `delegateUrl` if you
-are not using `https://delegate.engine9.ai`. Another provider is possible
-later; it must return the same identity shape. See
+Delegate is the default identity provider. You only set `delegateUrl` (on
+both calls) if you are not using `https://delegate.engine9.ai`. Another
+provider is possible later; it must return the same identity shape. See
 [without-core.md](./without-core.md).
 
-## Step 2 — Add a login button
+## Step 2 — Configure the widget
 
-Login has to start from a click (browsers block popups otherwise). Any
-element with `data-e9-login` does that:
+Every option is in the [README](../README.md#the-login-widget). The ones most
+sites set:
+
+| Option | What it changes |
+| --- | --- |
+| `minLevel` | Level a login asks for. `1` (default): share a name and email. `2`: an email or phone delegate has confirmed |
+| `fields`, `optionalFields` | What the site asks delegate to share |
+| `loginLevel: 2` | Delegate also offers an emailed sign-in link, for people without Google |
+| `roles`, `role`, `onRoleChange` | Adds a Role section to the dialog |
+| `branding: false` | Hides the Delegate mark and footer |
+| `siteName`, `labels`, `theme` | Wording and look |
+
+Keep **Switch email** available (it always is in the widget). Delegate
+remembers which email address a person shares with your Domain, so logging
+in again returns the same one. If they shared the wrong address, Switch email
+reopens delegate's share page so they can pick another, add one, or use a
+different Google account.
+
+For a single step inside your content (a paywall's "Log in to continue", a
+"Confirm your email" before comments), add a `data-e9-login` button there:
 
 ```html
-<button data-e9-login data-e9-fields="given_name,family_name,email">Log in</button>
-<button data-e9-change-delegate hidden>Change your Delegate information</button>
-<button data-e9-logout hidden>Log out</button>
+<button data-e9-login="2" data-e9-fields="email">Confirm email</button>
 ```
 
-| Level asked   | What the visitor does                                          |
-| ------------- | -------------------------------------------------------------- |
-| `data-e9-login="0"` | Continue with a UNID only. No name or email              |
-| `data-e9-login` (1) | Share a name and email. Nothing verified yet |
-| `data-e9-login="2"` | Share an email or phone delegate has confirmed |
-
-From JavaScript: `id.requestIdentity({ minLevel: 1, mode: "popup", fields })`.
-`mode: "redirect"` sends the whole window to delegate and back; popup mode
-falls back to it automatically when the popup is blocked.
-
-Keep the **Change your Delegate information** button unless you ask for no
-fields. Delegate remembers which email address a person shares with your
-Domain, so logging in again returns the same one. If they shared the wrong
-address, this button reopens delegate's share page so they can pick another,
-add one, or use a different Google account. It appears once they are signed
-in. Also put it on any "that address isn't on our list" message.
-From JavaScript: `id.changeDelegateInfo()`.
+From JavaScript: `widget.open()` shows the dialog, and
+`id.requestIdentity({ minLevel: 1, mode: "popup", fields })` starts a login
+directly.
 
 ## Step 3 — Show different content (soft)
 
@@ -158,19 +170,21 @@ Details: [forms.md](./forms.md).
 | Environment                       | What to do                                                                          |
 | --------------------------------- | ----------------------------------------------------------------------------------- |
 | Static host (Pages, S3, any HTML) | Upload the page. Allow the Domain on delegate. Done                                 |
-| Astro / Next / any SPA            | Run `createEngine9Id` in **browser** code, not during server render                 |
+| Astro / Next / any SPA            | Run `mount` and `loginWidget` in **browser** code, not during server render          |
 | Cloudflare Workers                | Still just a script in the HTML the Worker returns. Workers are not required for id |
 | Local                             | `npx serve` (or your dev server). Use an allowed localhost origin                   |
 
 ## Check that it works
 
 1. Open the site in a normal browser window (not `file://`).
-2. Click the button. A delegate window opens.
-3. After you finish, the page shows a Level and a UNID.
-4. If delegate says the domain is not allowed, the Domain does not match
+2. Click **Login**. The Delegate dialog opens on your page.
+3. Click **Log in with Google**. A delegate window opens.
+4. After you finish, the window closes and the button shows your email.
+5. If delegate says the domain is not allowed, the Domain does not match
    (including `www`, `http` vs `https`, or the port).
-5. Click **Change your Delegate information**. Delegate shows the share page
-   with your email addresses even though you already shared.
+6. Click the button again, then **Switch email**. Delegate shows the share
+   page with your email addresses even though you already shared.
+7. **Log out**. The button reads **Login** again.
 
 ## What id will not do
 

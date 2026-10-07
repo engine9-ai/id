@@ -1,7 +1,50 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { listenForDelegateIdentity } from '../src/popup';
-import { postMessage } from './helpers';
+import { createEngine9Id } from '../src/client';
+import { listenForDelegateIdentity, openLogoutPopup } from '../src/popup';
+import { DOMAIN, postMessage } from './helpers';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe('openLogoutPopup', () => {
+  it('resolves when Delegate posts delegate-logout from the popup', async () => {
+    const popup = { closed: false, close: vi.fn() } as unknown as Window;
+    vi.spyOn(window, 'open').mockReturnValue(popup);
+    const pending = openLogoutPopup({
+      url: 'https://delegate.engine9.ai/identity/logout/bridge?domain=site.example',
+      expectedOrigin: 'https://delegate.engine9.ai',
+    });
+    postMessage('https://evil.example', { type: 'delegate-logout' });
+    postMessage('https://delegate.engine9.ai', { type: 'delegate-logout', loggedOut: true });
+    await expect(pending).resolves.toBe('loggedOut');
+  });
+
+  it('returns null when the popup is blocked', async () => {
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    await expect(
+      openLogoutPopup({ url: 'https://delegate.engine9.ai/x', expectedOrigin: 'https://delegate.engine9.ai' }),
+    ).resolves.toBeNull();
+  });
+});
+
+describe('logout', () => {
+  it('opens the logout bridge for a popup Delegate logout and clears the identity first', async () => {
+    const popup = { closed: false, close: vi.fn() } as unknown as Window;
+    const open = vi.spyOn(window, 'open').mockReturnValue(popup);
+    const id = createEngine9Id({ domain: DOMAIN, storage: 'memory' });
+    const seen: unknown[] = [];
+    id.onChange((identity) => seen.push(identity));
+    const pending = id.logout({ delegate: true, mode: 'popup' });
+    expect(seen).toEqual([null]);
+    expect(String(open.mock.calls[0][0])).toBe(
+      'https://delegate.engine9.ai/identity/logout/bridge?domain=site.example',
+    );
+    postMessage('https://delegate.engine9.ai', { type: 'delegate-logout', loggedOut: true });
+    await expect(pending).resolves.toBeUndefined();
+  });
+});
 
 const DELEGATE = 'https://delegate.engine9.ai';
 

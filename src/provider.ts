@@ -11,6 +11,7 @@ import { DEFAULT_DELEGATE_URL } from './types';
 import {
   authorizeUrl,
   bridgeUrl,
+  logoutBridgeUrl,
   logoutUrl,
   trimSlash,
 } from './url';
@@ -28,6 +29,8 @@ export interface BuildAuthorizeOptions {
   optionalFields?: string[];
   prompt?: Prompt;
   loginLevel?: LoginLevel;
+  /** Identity Token lifetime in seconds (`expires_in`). */
+  expiresIn?: number;
   nonce?: string;
   state?: string;
   responseMode?: ResponseMode;
@@ -41,6 +44,8 @@ export interface BuildBridgeOptions {
   optionalFields?: string[];
   prompt?: Prompt;
   loginLevel?: LoginLevel;
+  /** Identity Token lifetime in seconds (`expires_in`). */
+  expiresIn?: number;
   nonce?: string;
   state?: string;
 }
@@ -66,6 +71,8 @@ export interface IdentityProvider {
   buildAuthorizeUrl(opts: BuildAuthorizeOptions): Promise<string> | string;
   buildBridgeUrl?(opts: BuildBridgeOptions): Promise<string> | string;
   buildLogoutUrl?(opts: BuildLogoutOptions): Promise<string> | string;
+  /** Popup logout page that posts `{ type: "delegate-logout" }` back. */
+  buildLogoutBridgeUrl?(opts: { domain: string }): string;
   /** Origin trusted for popup postMessage (usually issuer origin). */
   messageOrigin?(config: ProviderConfig): string;
   verifyToken(token: string, opts: VerifyTokenOptions): Promise<Identity>;
@@ -110,6 +117,7 @@ export function createDelegateProvider(
         optionalFields: opts.optionalFields,
         prompt: opts.prompt,
         loginLevel: opts.loginLevel,
+        expiresIn: opts.expiresIn,
         nonce: opts.nonce,
         state: opts.state,
         responseMode: opts.responseMode,
@@ -128,6 +136,7 @@ export function createDelegateProvider(
         optionalFields: opts.optionalFields,
         prompt: opts.prompt,
         loginLevel: opts.loginLevel,
+        expiresIn: opts.expiresIn,
         nonce: opts.nonce,
         state: opts.state,
         bridgeEndpoint: discovery.identity_bridge_endpoint,
@@ -141,6 +150,15 @@ export function createDelegateProvider(
         domain: opts.domain,
         returnTo: opts.returnTo,
         logoutEndpoint: discovery.logout_endpoint,
+      });
+    },
+
+    buildLogoutBridgeUrl(opts: { domain: string }): string {
+      const discovery = defaultConfiguration(delegateUrl);
+      return logoutBridgeUrl({
+        delegateUrl,
+        domain: opts.domain,
+        logoutBridgeEndpoint: discovery.logout_bridge_endpoint,
       });
     },
 

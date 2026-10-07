@@ -2,36 +2,56 @@
 name: e9-id-deploy
 description: >-
   Deploy @engine9/id on any website: register the Domain with delegate,
-  add the script or npm package, mount(), data-e9-* login buttons and content
-  gates, id.gate() hooks, requestIdentity, render by Identity Level. Use when
-  installing engine9 identity, adding delegate login to a site, building a
-  soft paywall, or wiring Level 0/1 sharing without core.
+  add the script or npm package, mount(), the loginWidget() Login button
+  (log in with Google, switch email, change role, log out in one dialog),
+  data-e9-* content gates, id.gate() hooks, requestIdentity, render by
+  Identity Level. Use when installing engine9 identity, adding delegate login
+  to a site, building a soft paywall, or wiring Level 0/1 sharing without core.
 ---
 
 # Deploy `@engine9/id`
 
 Human guide (start here): [`README.md`](../../README.md) — quick start,
-`data-e9-*` attribute table, `id.gate()` hooks, troubleshooting.
+the login widget, `data-e9-*` attribute table, `id.gate()` hooks,
+troubleshooting.
 Deploy steps: [`docs/deploy.md`](../../docs/deploy.md).
 Canonical protocol: [`docs/protocol.md`](../../docs/protocol.md).
 Without-core guide: [`docs/without-core.md`](../../docs/without-core.md).
 
 ## Fastest path (no server)
 
-```html
-<script src="https://unpkg.com/@engine9/id@1/dist/id.iife.js"></script>
-<script>const id = engine9Id.mount();</script>
+The login widget is the main way to interact with Delegate. Put one in the
+header of every page; do not build separate Log in / Change / Log out
+buttons.
 
-<button data-e9-login>Log in</button>
-<button data-e9-logout hidden>Log out</button>
+```html
+<span data-e9-login-widget></span>
+
+<script src="https://unpkg.com/@engine9/id@1/dist/id.iife.js"></script>
+<script>
+  const id = engine9Id.mount();
+  engine9Id.loginWidget({ id, fields: ["given_name", "email"] });
+</script>
+
 <div data-e9-max-level="0">Log in to keep reading.</div>
 <div data-e9-min-level="1" hidden>Gated content…</div>
 ```
 
+npm: `import { loginWidget } from "@engine9/id/widget"`.
+
 `mount()` = `createEngine9Id({ storage: "local" })` + `handleCallback()` +
-`bindContent()`. Hooks: `id.gate({ minLevel, onAllow, onBlock })`. Gates are
-soft (hidden attribute); hard gates need core. The steps below are the
-lower-level API.
+`bindContent()`. `loginWidget()` shows the email and role (or **Login**); its
+dialog runs Log in with Google, Switch email (`prompt=select`), Change role,
+and Log out (logout bridge popup, so the page stays put). Common options:
+`minLevel`, `fields`, `loginLevel: 2`, `roles` / `role` / `onRoleChange`,
+`branding: false`, `labels`, `theme`. A site with its own server session
+passes `user` and the `onLogin` / `onLogout` hooks (README "With a server
+session").
+
+`data-e9-login` buttons are for one step inside content (a paywall's "Log in
+to continue", "Confirm email" before comments). Hooks:
+`id.gate({ minLevel, onAllow, onBlock })`. Gates are soft (hidden
+attribute); hard gates need core. The steps below are the lower-level API.
 
 ## 1. Register the Domain
 

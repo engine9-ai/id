@@ -2,7 +2,8 @@ import { createCoreClient } from './core';
 import { DelegateIdentityError, delegateReturnedError } from './errors';
 import { meetsGate, meetsLevel } from './levels';
 import { createDebugLog } from './log';
-import { openIdentityPopup } from './popup';
+import { defaultConfiguration } from './discovery';
+import { openIdentityPopup, openLogoutPopup } from './popup';
 import { createDelegateProvider } from './provider';
 import { randomId } from './random';
 import { createStorage, STORAGE_KEYS } from './storage';
@@ -15,6 +16,7 @@ import type {
   FetchImpl,
   GateOptions,
   Identity,
+  LogoutOptions,
   RequestIdentityOptions,
 } from './types';
 import { DEFAULT_DELEGATE_URL } from './types';
@@ -139,6 +141,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     const { nonce, state } = beginRequest();
     const returnTo = opts.returnTo ?? currentHref();
     const loginLevel = opts.loginLevel ?? config.loginLevel;
+    const expiresIn = opts.expiresIn ?? config.expiresIn;
     log('request', {
       mode: opts.mode,
       domain,
@@ -146,6 +149,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       maxLevel: opts.maxLevel,
       prompt: opts.prompt,
       loginLevel,
+      expiresIn,
       fields: opts.fields,
     });
     const shared = {
@@ -156,6 +160,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       optionalFields: opts.optionalFields,
       prompt: opts.prompt,
       loginLevel,
+      expiresIn,
       nonce,
       state,
     };
@@ -271,6 +276,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
           responseMode: opts.responseMode,
           prompt: 'none',
           loginLevel: opts.loginLevel,
+          expiresIn: opts.expiresIn,
         });
         if (silent && meetsLevel(silent, n)) return silent;
       } catch (err) {
@@ -290,6 +296,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       responseMode: opts.responseMode,
       prompt: opts.prompt,
       loginLevel: opts.loginLevel,
+      expiresIn: opts.expiresIn,
     });
   };
 
@@ -309,24 +316,31 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       responseMode: opts.responseMode,
       prompt: 'select',
       loginLevel: opts.loginLevel,
+      expiresIn: opts.expiresIn,
     });
   };
 
-  const logout = (opts: { delegate?: boolean } = {}): void => {
+  const logout = async (opts: LogoutOptions = {}): Promise<void> => {
     storage.clearIdentity();
     notify(null);
     if (!opts.delegate) return;
+    if (opts.mode === 'popup' && provider.buildLogoutBridgeUrl) {
+      const delegateBase = trimSlash(config.delegateUrl ?? DEFAULT_DELEGATE_URL);
+      const result = await openLogoutPopup({
+        url: provider.buildLogoutBridgeUrl({ domain }),
+        expectedOrigin:
+          provider.messageOrigin?.(defaultConfiguration(delegateBase)) ??
+          new URL(delegateBase).origin,
+        log,
+      });
+      if (result) return;
+      log('logout_popup:fallback_to_redirect', {});
+    }
     const built = provider.buildLogoutUrl?.({
       domain,
       returnTo: currentHref(),
     });
-    if (typeof built === 'string') {
-      assignLocation(built);
-      return;
-    }
-    if (built && typeof (built as Promise<string>).then === 'function') {
-      void (built as Promise<string>).then(assignLocation);
-    }
+    if (built !== undefined) assignLocation(await built);
   };
 
   const core = config.core
@@ -354,6 +368,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       );
     },
     getIdentity,
+    getToken: () => (getIdentity() ? storage.get(STORAGE_KEYS.token) : null),
     requestIdentity,
     handleCallback,
     ensureLevel,

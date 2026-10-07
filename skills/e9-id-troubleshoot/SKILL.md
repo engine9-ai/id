@@ -12,7 +12,15 @@ description: >-
 ## Popup blocked
 
 `requestIdentity({ mode: "popup" })` needs a user gesture. If `window.open`
-returns null, retry with `mode: "redirect"`.
+returns null, retry with `mode: "redirect"`. The login widget opens its
+popups inside the click already; a custom `onLogout` must not delay the
+Delegate logout popup with an `await` before it opens.
+
+## Login button does not appear
+
+With no `[data-e9-login-widget]` element on the page when it runs,
+`loginWidget()` appends the button to the end of `<body>`. Add the element
+(or pass `target`) before the script runs, and call it once per page.
 
 ## `error=invalid_domain`
 

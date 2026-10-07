@@ -48,7 +48,7 @@ export interface DeclaredRoleEvaluation {
  */
 export function meetsRequiredAuth(
   requiredAuth: RequiredAuth | null | undefined,
-  identity: Identity | null | undefined,
+  identity: Pick<Identity, 'level' | 'auth'> | { level?: number; auth?: { two_factor?: boolean } } | null | undefined,
 ): boolean {
   if (!requiredAuth || typeof requiredAuth !== 'object') return true;
   if (requiredAuth.twoFactor === true && !identity?.auth?.two_factor) return false;

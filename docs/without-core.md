@@ -37,8 +37,30 @@ First-time steps: [deploy.md](./deploy.md).
 
 ## Minimal flow
 
-The shortest version is `mount()` plus `data-e9-*` attributes; see the
-[README](../README.md#quick-start-about-ten-minutes). Step by step:
+The main way is `mount()` plus the
+[login widget](../README.md#the-login-widget), with `data-e9-*` attributes
+for gated content:
+
+```html
+<span data-e9-login-widget></span>
+<script src="https://unpkg.com/@engine9/id@1/dist/id.iife.js"></script>
+<script>
+  const id = engine9Id.mount();
+  engine9Id.loginWidget({
+    id,
+    roles: [{ id: 'activist', name: 'Activist', requiredAuth: { minLevel: 1 } }],
+    role: localStorage.getItem('role'),
+    onRoleChange: (roleId) => localStorage.setItem('role', roleId),
+  });
+</script>
+```
+
+The widget's dialog logs in, switches email (so a person who shared the
+wrong address can pick another; logging in again would return the same
+one), changes the declared role, and logs out. Roles here are
+[declared roles](./declared-roles.md): soft, page-local.
+
+What it does, step by step, if you build your own controls instead:
 
 1. Register the consumer Domain with delegate (`ALLOWED_DOMAINS` or the
    `domain` table).
@@ -49,9 +71,9 @@ The shortest version is `mount()` plus `data-e9-*` attributes; see the
    `visibleContent` for soft sections.
 6. When the token is near expiry, `ensureLevel(n)` (silent, then interactive).
 7. Once signed in, offer **Change your Delegate information**
-   (`changeDelegateInfo()` or `data-e9-change-delegate`) so a person who
-   shared the wrong email address can pick another. Logging in again would
-   return the same one.
+   (`changeDelegateInfo()` or `data-e9-change-delegate`).
+8. Log out with `logout()`, or `logout({ delegate: true, mode: 'popup' })` to
+   end the Delegate session too without leaving the page.
 
 Level 0 is always available: a UNID with no fields shared. Use it for
 anonymous analytics and “continue as anonymous” affordances.

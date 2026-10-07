@@ -28,6 +28,11 @@ export interface AuthorizeUrlOptions {
   prompt?: string;
   /** `login_level`: delegate sign-in screen. `2` adds an email sign-in link. */
   loginLevel?: number;
+  /**
+   * Identity Token lifetime in seconds (`expires_in`). Delegate defaults to
+   * 28800 (8 hours) and clamps at 30 days.
+   */
+  expiresIn?: number;
   nonce?: string;
   state?: string;
   responseMode?: 'fragment' | 'query';
@@ -43,6 +48,8 @@ export interface BridgeUrlOptions {
   optionalFields?: string[] | string;
   prompt?: string;
   loginLevel?: number;
+  /** Identity Token lifetime in seconds (`expires_in`). */
+  expiresIn?: number;
   nonce?: string;
   state?: string;
   bridgeEndpoint?: string;
@@ -82,6 +89,7 @@ export function authorizeUrl(opts: AuthorizeUrlOptions): string {
   setOptional(url.searchParams, 'optional_fields', fieldsParam(opts.optionalFields));
   setOptional(url.searchParams, 'prompt', opts.prompt);
   setOptional(url.searchParams, 'login_level', opts.loginLevel);
+  setOptional(url.searchParams, 'expires_in', opts.expiresIn);
   setOptional(url.searchParams, 'nonce', opts.nonce);
   setOptional(url.searchParams, 'state', opts.state);
   setOptional(url.searchParams, 'response_mode', opts.responseMode);
@@ -100,6 +108,7 @@ export function bridgeUrl(opts: BridgeUrlOptions): string {
   setOptional(url.searchParams, 'optional_fields', fieldsParam(opts.optionalFields));
   setOptional(url.searchParams, 'prompt', opts.prompt);
   setOptional(url.searchParams, 'login_level', opts.loginLevel);
+  setOptional(url.searchParams, 'expires_in', opts.expiresIn);
   setOptional(url.searchParams, 'nonce', opts.nonce);
   setOptional(url.searchParams, 'state', opts.state);
   return url.toString();
@@ -112,6 +121,21 @@ export function logoutUrl(opts: LogoutUrlOptions): string {
   const url = new URL(base);
   url.searchParams.set('domain', opts.domain);
   setOptional(url.searchParams, 'return_to', opts.returnTo);
+  return url.toString();
+}
+
+export interface LogoutBridgeUrlOptions {
+  delegateUrl: string;
+  domain: string;
+  logoutBridgeEndpoint?: string;
+}
+
+/** Build GET /identity/logout/bridge (popup logout). */
+export function logoutBridgeUrl(opts: LogoutBridgeUrlOptions): string {
+  const base =
+    opts.logoutBridgeEndpoint ?? `${trimSlash(opts.delegateUrl)}/identity/logout/bridge`;
+  const url = new URL(base);
+  url.searchParams.set('domain', opts.domain);
   return url.toString();
 }
 

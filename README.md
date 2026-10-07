@@ -1,13 +1,21 @@
 # `@engine9/id`
 
-Add a **Log in** button and Level-based content gates to any website with one
-script tag. No server code, no database, no framework required.
+Add the Delegate **Login** button and Level-based content gates to any
+website with one script tag. No server code, no database, no framework
+required.
 
 `@engine9/id` is the browser client for engine9 identity. Visitors log in
 through [delegate](https://delegate.engine9.ai), choose which **fields** to
 share with your website, and come back with a signed **Identity Token**. The
 library verifies that token in the browser and then shows or hides parts of
 your page based on the visitor's **Identity Level** (0–4).
+
+The **[login widget](#the-login-widget)** is the main way visitors interact
+with Delegate. It is one button that shows who is logged in (email and role)
+or **Login**, and one dialog on your page for every Delegate step: log in
+with Google, switch email, change role, and log out. Start there. The
+lower-level pieces (`data-e9-login` buttons, `requestIdentity()`) are for
+pages that need their own controls.
 
 This works like the soft paywall on a news site: the article is in the page,
 JavaScript hides it until the visitor logs in. It is **not** a security
@@ -35,14 +43,17 @@ non-`www` are different Domains; register each you use.
 Already allowed on the public delegate for local development:
 `localhost:3000`, `localhost:3001`, `localhost:3002`, `localhost:3003`.
 
-### 2. Add the script
+### 2. Add the script and the Login button
 
 **Script tag** (any HTML page):
 
 ```html
+<span data-e9-login-widget></span>
+
 <script src="https://unpkg.com/@engine9/id@1/dist/id.iife.js"></script>
 <script>
   const id = engine9Id.mount();
+  engine9Id.loginWidget({ id });
 </script>
 ```
 
@@ -54,22 +65,23 @@ npm install @engine9/id
 
 ```js
 import { mount } from '@engine9/id';
+import { loginWidget } from '@engine9/id/widget';
 
 const id = mount();
+loginWidget({ id }); // goes in [data-e9-login-widget]
 ```
 
-Put the script on every page that has a login button or gated content.
-`mount()` does three things: creates the client, finishes a login that is
-returning to this page, and starts watching the `data-e9-*` attributes below.
-Run it in browser code only (not during server rendering).
+Put the script on every page, usually with the Login button in the header.
+`mount()` creates the client, finishes a login that is returning to this
+page, and starts watching the `data-e9-*` attributes below. `loginWidget()`
+puts the Login button in the `data-e9-login-widget` element. Run both in
+browser code only (not during server rendering).
 
-### 3. Add a login button and gate some content
+### 3. Gate some content
 
 ```html
 <header>
-  <button data-e9-login>Log in</button>
-  <button data-e9-change-delegate hidden>Change your Delegate information</button>
-  <button data-e9-logout hidden>Log out</button>
+  <span data-e9-login-widget></span>
   <span data-e9-min-level="1" hidden>
     Hello, <span data-e9-field="given_name">reader</span>
   </span>
@@ -93,25 +105,141 @@ Run it in browser code only (not during server rendering).
 </article>
 ```
 
+The paywall's `data-e9-login` button starts the same login as the widget,
+right where the reader is stuck.
+
 That is the whole integration. Serve the page over `http://` or `https://`
-(not `file://`), open it, and click **Log in**.
+(not `file://`), open it, and click **Login**.
 
 ### What the visitor sees
 
-1. A delegate window opens. First-time visitors sign in to delegate with
-   Google. (Your site can also offer an emailed sign-in link; see
+1. **Login** opens the Delegate dialog on your page. It says what your site
+   asks for (for example "your name and email address").
+2. **Log in with Google** opens a Delegate window. First-time visitors sign
+   in with Google. (Your site can also offer an emailed sign-in link; see
    [Sign-in screens](#sign-in-screens-google-only-or-google-plus-an-email-link).)
    Returning visitors are already signed in.
-2. Delegate asks which fields (name, email) to share with your Domain.
+3. Delegate asks which fields (name, email) to share with your Domain.
    Required fields are part of logging in; optional fields are checkboxes.
    Delegate remembers that choice as a **Grant**, so the next login on your
    Domain is instant.
-3. The window closes. Your page updates: gated content appears, the login
-   button hides, the logout button shows.
+4. The window closes. The button now shows the visitor's email (and role, if
+   your site has roles), and gated content appears.
 
-The login lasts until the Identity Token expires (about one hour) and carries
-across tabs. Clicking **Log in** again renews it without another chooser
-because the Grant is remembered.
+Clicking the button again opens the same dialog to **switch email**,
+**change role**, or **log out**. Nothing navigates away from your page.
+
+The login lasts until the Identity Token expires (about eight hours) and carries
+across tabs. Logging in again renews it without another chooser because the
+Grant is remembered.
+
+## The login widget
+
+The login widget is the main way visitors interact with Delegate: one button
+and one dialog for everything. The button shows the logged-in email and
+role, or **Login**. Clicking it opens a dialog on your page that:
+
+1. **Logs in with Google** (Delegate's popup; with `loginLevel: 2`, Google or
+   an emailed link).
+2. **Switches email**: the address your site receives (Delegate's address
+   chooser, `prompt=select`, in the same popup). The visitor can also add an
+   address or use a different Google account there.
+3. **Changes role** on your site, when you give it roles.
+4. **Logs out**, on your site only or on Delegate too (a small popup, no
+   redirect).
+5. Shows **Delegate branding**, unless you turn it off.
+
+The dialog stays open behind Delegate's popups and updates when they answer.
+Use it in your header on every page instead of separate Log in, Change your
+Delegate information, and Log out buttons.
+
+The quick start above is the whole setup. Everything is configurable from
+the call:
+
+```js
+import { mount } from '@engine9/id';
+import { loginWidget } from '@engine9/id/widget';
+
+const id = mount();
+const widget = loginWidget({
+  id,
+  target: '#login',                     // default: [data-e9-login-widget], else <body>
+  minLevel: 1,                          // Level a login asks for
+  fields: ['given_name', 'email'],      // required fields (default: Delegate's)
+  optionalFields: ['phone'],
+  loginLevel: 2,                        // also offer an emailed sign-in link
+  branding: false,                      // hide the Delegate mark and footer
+  siteName: 'The Daily Example',
+  labels: { login: 'Sign in' },
+  roles: [
+    { id: 'reader', name: 'Reader' },
+    { id: 'editor', name: 'Editor', description: 'Publish stories', requiredAuth: { minLevel: 3 } },
+  ],
+  role: localStorage.getItem('role'),
+  onRoleChange: (roleId) => localStorage.setItem('role', roleId),
+});
+```
+
+Roles are yours. The widget lists them, locks the ones the visitor's Level
+does not meet ("Needs Level 3"), and calls `onRoleChange`. Throw from it to
+refuse; the message appears in the dialog. Without `roles` there is no Role
+section. Page-local roles like these are
+[declared roles](./docs/declared-roles.md); for enforced roles, see
+[With a server session](#with-a-server-session).
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `id` | a new client (`local` storage) | The client from `mount()` or `createEngine9Id()` |
+| `target` | `[data-e9-login-widget]`, else `<body>` | Element or selector for the button |
+| `minLevel`, `maxLevel`, `fields`, `optionalFields`, `loginLevel` | Level 1, Delegate's fields | What every login and email switch asks Delegate for |
+| `branding` | `true` | Delegate mark in the dialog and "Sign-in by Delegate" footer |
+| `siteName` | `location.hostname` | Name in the dialog title |
+| `labels` | English | Any button or title text. `{site}` in `title` / `signedInTitle` is replaced |
+| `theme` | `'auto'` | `'light'` or `'dark'`; `auto` follows the system |
+| `roles`, `role`, `onRoleChange` | none | Role section |
+| `user` | from the Identity Token | Your server session's `{ email, role, level }`. Set it when your session outlives the token |
+| `onLogin(identity, token)` | none | After login or an email switch. Send `token` to your server; return the new `user` |
+| `onLogout()` | none | End your server session |
+| `logoutDelegate` | `'ask'` | `'ask'` shows "Also sign out of Delegate"; `true` always; `false` never |
+| `onError` | `console.warn` | Every error the dialog shows |
+
+The widget returns `{ element, id, open(), close(), update({ user?, role? }), destroy() }`.
+Call `widget.open()` from your own link to show the dialog, and
+`widget.update({ role })` when your page changes the role some other way.
+
+Styling: set `--e9-accent`, `--e9-bg`, `--e9-fg`, `--e9-muted`, `--e9-border`,
+`--e9-surface`, and `--e9-font` on `.e9-login-widget`. The element has
+`data-state` (`signed-in` / `signed-out`) and `data-role`, and exposes
+`::part(button)`, `::part(email)`, `::part(role)`, and `::part(dialog)`.
+
+### With a server session
+
+A site that mints its own session (like `@engine9/core`) passes the server's
+view as `user`, and posts the token in `onLogin`. The server is then the one
+that enforces roles; the widget just offers them.
+
+```js
+loginWidget({
+  user: JSON.parse(document.body.dataset.user || 'null'),
+  roles,
+  async onLogin(identity, token) {
+    const res = await fetch('/auth/delegate', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ delegate_token: token }),
+    });
+    return (await res.json()).user; // { email, role, level }
+  },
+  async onRoleChange(roleId) {
+    await fetch('/auth/role', { method: 'POST', body: new URLSearchParams({ role: roleId }) });
+  },
+  async onLogout() {
+    await fetch('/auth/logout', { method: 'POST', keepalive: true });
+  },
+});
+```
+
+The festival demo ([`demo-festival`](../demo-festival)) does exactly this.
 
 ## Content gates in HTML
 
@@ -134,7 +262,10 @@ No identity counts as Level 0.
 Start gated content with the `hidden` attribute in your HTML so it does not
 flash before the script runs. Start teasers visible.
 
-Buttons and text:
+Buttons and text. The [login widget](#the-login-widget) already covers log
+in, switch email, and log out for the whole site; use these buttons inside
+your content, where a reader needs one specific step ("Log in to keep
+reading", "Confirm your email to comment"):
 
 | Attribute                              | What it does                                                                 |
 | -------------------------------------- | ---------------------------------------------------------------------------- |
@@ -198,10 +329,13 @@ then also offers "Email me a sign-in link":
 
 A person can sign in with an address your site does not have on file (a
 personal Gmail instead of the address on your member list). They are signed
-in to delegate, so a second "Sign in with Google" does nothing new. Give them
-a **Change your Delegate information** button instead. Delegate shows the
-share page again with their email addresses. They can pick another one, add
-one, or use a different Google account. Your page then gets a new token.
+in to delegate, so a second "Sign in with Google" does nothing new. **Switch
+email** in the [login widget](#the-login-widget) is the fix: Delegate shows
+the share page again with their email addresses. They can pick another one,
+add one, or use a different Google account. Your page then gets a new token.
+
+Next to the message itself, a **Change your Delegate information** button does
+the same thing in one click:
 
 ```html
 <div data-e9-min-level="1" hidden>
@@ -264,7 +398,10 @@ stop();
 Other things you will reach for:
 
 ```js
-// Start login from your own button or link.
+// Open the login widget's dialog from your own link.
+document.querySelector('#account-link').onclick = () => widget.open();
+
+// Start login directly from your own button (no dialog).
 myButton.onclick = () =>
   id.requestIdentity({ minLevel: 1, mode: 'popup', fields: ['given_name', 'email'] })
     .catch((err) => console.warn(err.code)); // access_denied, login_required, …
@@ -282,9 +419,10 @@ id.onChange((identity) => render(identity));
 // Ask for a higher Level only when the current one is too low.
 await id.ensureLevel(2);
 
-// Log out on this website only, or on delegate too.
+// Log out on this website only, or on delegate too (redirect, or a popup).
 id.logout();
 id.logout({ delegate: true });
+await id.logout({ delegate: true, mode: 'popup' });
 
 // Added new data-e9-* markup? Re-scan.
 id.apply();
@@ -422,8 +560,9 @@ same Identity Token, maps it to a `person_id`, and enforces roles with a real
 | Popup opens and closes, page unchanged                    | Check the console: `onError` receives the code. `access_denied` = visitor closed the window, or the window lost its link to this page (`error.details.reason === 'popup_closed'`; a Cloudflare bot check on Delegate causes this); `level_unavailable` = they chose "Stay anonymous" or declined a required field |
 | You need to see each login step                           | `createEngine9Id({ debug: true })` logs every step to the console with the prefix `[engine9-id]` |
 | Content flashes before hiding                             | Add `hidden` to gated elements in the HTML                                                    |
-| Visitor is logged out after an hour                       | Tokens expire. Clicking **Log in** renews silently; or call `id.ensureLevel(1)` on a gesture  |
-| Logged in on one page, not another                        | Every page needs the script and `mount()`. Storage is per Domain, so `www` and non-`www` differ |
+| Visitor is logged out after an hour                       | Tokens expire. **Login** → **Log in with Google** renews silently; or call `id.ensureLevel(1)` on a gesture |
+| Logged in on one page, not another                        | Every page needs the script, `mount()`, and `loginWidget()`. Storage is per Domain, so `www` and non-`www` differ |
+| Login button does not appear                              | `loginWidget()` found no `[data-e9-login-widget]` and went to the end of `<body>`. Add the element, or pass `target` |
 | Works locally, not in production                          | Production Domain not registered, or the page is server-rendered and `mount()` never ran in the browser |
 
 ## Going further
@@ -446,14 +585,19 @@ const binding = bindContent(id, { root: document.querySelector('#app') });
 
 Once the browser holds an Identity Token, `id.core.login()` posts it to your
 core API with a public key. Core resolves `person_id` and roles and can refuse
-requests server-side.
+requests server-side. Call it from the login widget's `onLogin`:
 
 ```js
 const id = mount({
   core: { apiUrl: 'https://www.example.com', publicApiKey: 'e9publickey_…' },
 });
-await id.ready;
-await id.core.login();
+loginWidget({
+  id,
+  async onLogin() {
+    const { session } = await id.core.login();
+    return { email: session.fields?.email, level: session.level };
+  },
+});
 const me = await id.core.me();
 ```
 
@@ -469,19 +613,21 @@ Guides: [with-core](./docs/with-core.md), [declared roles](./docs/declared-roles
 | ------ | ------------ |
 | `getIdentity()` | Verified, unexpired token payload, or `null` |
 | `getDomainUnid()` | `identity.sub`, else the last stored Domain UNID |
-| `requestIdentity({ minLevel, maxLevel?, fields?, prompt?, loginLevel?, mode, returnTo?, responseMode? })` | Start login. `popup` opens `/identity/bridge`; `redirect` navigates to `/identity/authorize`. `loginLevel: 2` adds the email sign-in link |
+| `requestIdentity({ minLevel, maxLevel?, fields?, prompt?, loginLevel?, expiresIn?, mode, returnTo?, responseMode? })` | Start login. `popup` opens `/identity/bridge`; `redirect` navigates to `/identity/authorize`. `loginLevel: 2` adds the email sign-in link. `expiresIn` sets Identity Token lifetime in seconds (delegate default 28800 / 8 hours, max 30 days) |
 | `handleCallback()` | Read `#delegate_token` or `?delegate_token` on return, verify, store, clean the URL |
 | `ensureLevel(n, opts?)` | No-op if already at `n`; otherwise try silently, then interactively |
 | `changeDelegateInfo(opts?)` | "Change your Delegate information": `prompt=select` with the current Grant's fields, so the visitor can pick another email address. Options as `requestIdentity`, all optional (default Level 1, popup) |
 | `gate({ minLevel?, maxLevel?, twoFactor?, onAllow?, onBlock?, onChange? })` | Soft content hook; returns unsubscribe |
 | `onChange(cb)` | Any identity change; returns unsubscribe |
-| `logout({ delegate? })` | Clear storage; optionally end the delegate session |
+| `getToken()` | The stored Identity Token (JWT) to send to your server, or `null` |
+| `logout({ delegate?, mode? })` | Clear storage; optionally end the delegate session. `mode: 'popup'` uses `/identity/logout/bridge` and stays on the page (redirect if the popup is blocked) |
 | `level` / `isAnonymous` | Getters from the stored identity |
 | `core.login()` / `core.me()` / `core.changeRole(id)` / `core.fetch(path, init)` | Core API helpers |
 
 Package exports:
 
-- `@engine9/id` — everything below plus `createEngine9Id`, `mount`, `verifyIdentityToken`
+- `@engine9/id` — everything below plus `createEngine9Id`, `mount`, `loginWidget`, `verifyIdentityToken`
+- `@engine9/id/widget` — `loginWidget` (the main way to log in; see [The login widget](#the-login-widget))
 - `@engine9/id/content` — `mount`, `bindContent`, `gateFromElement`, `CONTENT_ATTRIBUTES`
 - `@engine9/id/levels` — `LEVELS`, `describeLevel`, `meetsLevel`, `meetsGate`, `fieldsForLevel`
 - `@engine9/id/roles` — declared roles: `meetsRequiredAuth`, `evaluateDeclaredRole`, `visibleContent`

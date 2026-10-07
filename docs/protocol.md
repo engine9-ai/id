@@ -61,6 +61,7 @@ product language in docs and APIs (except the JWT claim `aud`, which is RFC 7519
   "identity_authorize_endpoint": "https://delegate.engine9.ai/identity/authorize",
   "identity_bridge_endpoint": "https://delegate.engine9.ai/identity/bridge",
   "logout_endpoint": "https://delegate.engine9.ai/identity/logout",
+  "logout_bridge_endpoint": "https://delegate.engine9.ai/identity/logout/bridge",
   "fields_endpoint": "https://delegate.engine9.ai/user/fields",
   "levels_supported": [0, 1, 2, 3, 4],
   "token_signing_alg_values_supported": ["ES256"]
@@ -108,7 +109,7 @@ Claims:
 | `iss` | Issuer, e.g. `https://delegate.engine9.ai` |
 | `sub` | Domain UNID: `aud ":" hex` (formula below). Every token, every Level |
 | `aud` | Domain (`host` or `host:port`; product term is Domain). Also the HMAC namespace |
-| `iat`, `exp` | Unix seconds. Default TTL 3600s |
+| `iat`, `exp` | Unix seconds. Default TTL 28800s (8 hours); Domains may request longer via `expires_in` (max 30 days) |
 | `jti` | Unique token id |
 | `nonce` | Echo of client nonce when supplied |
 | `merged_from` | Optional. An earlier Domain UNID for the same person (see [UNID merge](#unid-merge)) |
@@ -194,6 +195,9 @@ Query:
   [Sign-in screen](#sign-in-screen-login_level).
 - `nonce`, `state` — opaque client values
 - `response_mode` — `fragment` (default) or `query`
+- `expires_in` — Identity Token lifetime in seconds (default `28800`, 8 hours).
+  Values above `2592000` (30 days) are clamped to that max. Missing,
+  empty, zero, negative, or non-numeric values use the default.
 
 Rules:
 
@@ -285,7 +289,7 @@ for every login, `requestIdentity({ …, loginLevel: 2 })` for one request, or
 
 ## Bridge (popup)
 
-`GET /identity/bridge?domain=<host[:port]>&min_level=&prompt=&login_level=&nonce=&state=`
+`GET /identity/bridge?domain=<host[:port]>&min_level=&prompt=&login_level=&expires_in=&nonce=&state=`
 
 Top-level popup so SameSite=Lax cookies apply. Same consent logic as authorize.
 On success, `postMessage` to `window.opener`:
@@ -368,6 +372,13 @@ then returns to a path on delegate (the consent page links here).
   can end the delegate session and return. Redirects only when `return_to` is
   on that `domain` and the domain is allowed (`ALLOWED_DOMAINS` or
   `domain.allowed = 1`).
+- `GET /identity/logout/bridge?domain=&return_to=` — popup logout. Ends the
+  User session like `/identity/logout`, then posts
+  `{ "type": "delegate-logout", "loggedOut": true }` to `window.opener` and
+  closes. `targetOrigin` is the `return_to` origin (default
+  `https://<domain>`), checked with the same rules as `/identity/bridge`. A
+  Domain that is not allowed gets `400 { "error": "invalid_domain" }`.
+  `@engine9/id`: `id.logout({ delegate: true, mode: 'popup' })`.
 
 ## Level assignment
 

@@ -42,6 +42,28 @@ const me = await id.core.me();
 `login()` POSTs `{ delegate_token }` to `/auth/login`. The host may also set
 an HttpOnly cookie from the returned `token` (HMAC Core Session).
 
+On a page, wire those through the login widget (the main way to interact
+with Delegate) instead of separate buttons:
+
+```js
+import { loginWidget } from "@engine9/id/widget";
+
+loginWidget({
+  id,
+  roles: [{ id: "<vip-segment-uuid>", name: "VIP", requiredAuth: { minLevel: 1 } }],
+  async onLogin() {
+    const { session } = await id.core.login();
+    return { email: session.fields?.email, role: session.roles?.[0] ?? null, level: session.level };
+  },
+  async onRoleChange(roleId) {
+    await id.core.changeRole(roleId);
+  },
+});
+```
+
+`onLogin` also runs after **Switch email**, so core re-reads roles for the
+new address. Core enforces roles; the widget only offers them.
+
 ## 3. Roles
 
 `role_id === segment_id` (UUID). Example (festival demo):

@@ -40,4 +40,19 @@ describe('authorizeUrl', () => {
     expect(new URL(authorizeUrl({ ...base, loginLevel: 2 })).searchParams.get('login_level')).toBe('2');
     expect(new URL(bridgeUrl({ ...base, loginLevel: 2 })).searchParams.get('login_level')).toBe('2');
   });
+
+  it('sends expires_in only when asked', () => {
+    const base = {
+      delegateUrl: 'https://delegate.engine9.ai',
+      domain: 'site.example',
+      returnTo: 'https://site.example/callback',
+    };
+    expect(new URL(authorizeUrl(base)).searchParams.has('expires_in')).toBe(false);
+    expect(new URL(authorizeUrl({ ...base, expiresIn: 86400 })).searchParams.get('expires_in')).toBe(
+      '86400',
+    );
+    expect(new URL(bridgeUrl({ ...base, expiresIn: 86400 })).searchParams.get('expires_in')).toBe(
+      '86400',
+    );
+  });
 });

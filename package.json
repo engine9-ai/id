@@ -1,7 +1,7 @@
 {
   "name": "@engine9/id",
-  "version": "1.4.7",
-  "description": "Browser client for engine9 identity: add a delegate login button and Level-based content gates to any website with one script tag, verify Identity Tokens, and optionally talk to @engine9/core.",
+  "version": "1.5.0",
+  "description": "Browser client for engine9 identity: add the Delegate Login widget (log in, switch email, change role, log out in one dialog) and Level-based content gates to any website with one script tag, verify Identity Tokens, and optionally talk to @engine9/core.",
   "type": "module",
   "license": "MIT",
   "author": "engine9",
@@ -43,6 +43,11 @@
       "types": "./dist/forms.d.ts",
       "import": "./dist/forms.js",
       "default": "./dist/forms.js"
+    },
+    "./widget": {
+      "types": "./dist/widget.d.ts",
+      "import": "./dist/widget.js",
+      "default": "./dist/widget.js"
     }
   },
   "files": [

@@ -235,7 +235,8 @@ export function bindContent(
     const logoutEl = target.closest(`[${CONTENT_ATTRIBUTES.logout}]`);
     if (logoutEl) {
       event.preventDefault();
-      id.logout({ delegate: logoutEl.getAttribute(CONTENT_ATTRIBUTES.logout) === 'delegate' });
+      id.logout({ delegate: logoutEl.getAttribute(CONTENT_ATTRIBUTES.logout) === 'delegate' })
+        .catch(onError);
     }
   };
 
@@ -296,6 +297,7 @@ export function mount(options: MountOptions = {}): MountedEngine9Id {
   return {
     getDomainUnid: () => id.getDomainUnid(),
     getIdentity: () => id.getIdentity(),
+    getToken: () => id.getToken(),
     requestIdentity: (opts) => id.requestIdentity(opts),
     handleCallback: () => id.handleCallback(),
     ensureLevel: (n, opts) => id.ensureLevel(n, opts),

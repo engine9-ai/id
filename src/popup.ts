@@ -2,6 +2,7 @@ import { DelegateIdentityError, delegateReturnedError } from './errors';
 import { LOG_PREFIX, type DebugLog } from './log';
 
 export const DELEGATE_IDENTITY_MESSAGE = 'delegate-identity';
+export const DELEGATE_LOGOUT_MESSAGE = 'delegate-logout';
 
 export interface DelegateIdentityMessage {
   token: string;
@@ -150,4 +151,46 @@ export function openIdentityPopup(
     }),
     closed,
   ]);
+}
+
+export interface OpenLogoutPopupOptions {
+  url: string;
+  expectedOrigin: string;
+  log?: DebugLog;
+}
+
+/**
+ * Open `/identity/logout/bridge` and wait for `{ type: "delegate-logout" }`.
+ * Resolves `loggedOut`, or `closed` when the window closed without answering.
+ * Returns null when the popup is blocked so the caller can fall back to redirect.
+ */
+export function openLogoutPopup(
+  opts: OpenLogoutPopupOptions,
+): Promise<'loggedOut' | 'closed' | null> {
+  const log = opts.log ?? (() => {});
+  const popup = window.open(opts.url, 'engine9-logout', 'popup=yes,width=420,height=320');
+  if (!popup) {
+    log('logout_popup:blocked', { url: opts.url });
+    return Promise.resolve(null);
+  }
+  log('logout_popup:opened', { url: opts.url });
+  return new Promise((resolve) => {
+    const finish = (result: 'loggedOut' | 'closed'): void => {
+      window.clearInterval(timer);
+      window.removeEventListener('message', onMessage);
+      log(`logout_popup:${result}`, {});
+      resolve(result);
+    };
+    const onMessage = (event: MessageEvent): void => {
+      const data = event.data as { type?: unknown } | null;
+      if (!data || typeof data !== 'object' || data.type !== DELEGATE_LOGOUT_MESSAGE) return;
+      if (event.origin !== opts.expectedOrigin) return;
+      if (event.source && event.source !== popup) return;
+      finish('loggedOut');
+    };
+    const timer = window.setInterval(() => {
+      if (popup.closed) finish('closed');
+    }, 300);
+    window.addEventListener('message', onMessage);
+  });
 }

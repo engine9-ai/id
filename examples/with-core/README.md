@@ -37,7 +37,30 @@ const res = await id.core.fetch('/read/content');
 `Authorization: Bearer e9publickey_…` and `X-API-Key`. Later calls add
 `X-Engine9-Session` when a session token is stored.
 
-## 3. Roles
+## 3. The Login button
+
+On a page, the login widget is the main way to call those. Its dialog logs in
+with Google, switches email, changes role, and logs out:
+
+```js
+import { loginWidget } from '@engine9/id/widget';
+
+loginWidget({
+  id,
+  roles: [{ id: '<segment-uuid>', name: 'VIP', requiredAuth: { minLevel: 1 } }],
+  async onLogin() {
+    const { session } = await id.core.login();
+    return { email: session.fields?.email, role: session.roles?.[0] ?? null, level: session.level };
+  },
+  async onRoleChange(roleId) {
+    await id.core.changeRole(roleId);
+  },
+});
+```
+
+The page needs `<span data-e9-login-widget></span>` where the button goes.
+
+## 4. Roles
 
 Roles live in core (`role_id === segment_id`). They may declare
 `requiredAuth.minLevel` and `requiredAuth.twoFactor`. Identity Levels are not

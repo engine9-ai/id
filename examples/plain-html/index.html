@@ -6,20 +6,18 @@
     <title>@engine9/id — plain HTML</title>
     <style>
       body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 40rem; }
-      header { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1.5rem; }
-      header span { margin-left: auto; }
+      header { display: flex; gap: 0.5rem; align-items: center; justify-content: flex-end; margin-bottom: 1.5rem; }
       .paywall { border: 1px solid #ccc; padding: 1rem; background: #fafafa; }
       pre { background: #f4f4f4; padding: 1rem; overflow: auto; }
     </style>
   </head>
   <body>
     <header>
-      <button data-e9-login>Log in</button>
-      <button data-e9-logout hidden>Log out</button>
       <span data-e9-min-level="1" hidden>
         Hello, <b data-e9-field="given_name">reader</b>
         (Level <span data-e9-level></span>, <span data-e9-level="name"></span>)
       </span>
+      <span data-e9-login-widget></span>
     </header>
 
     <article>
@@ -58,6 +56,9 @@
           document.getElementById('out').textContent = `error: ${err.code || err.message}`;
         },
       });
+
+      // The Login button: log in, switch email, and log out in one dialog.
+      engine9Id.loginWidget({ id, fields: ['given_name', 'email'] });
 
       // A JavaScript gate alongside the data-e9-* attributes.
       id.gate({

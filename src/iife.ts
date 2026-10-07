@@ -23,9 +23,11 @@ import {
   visibleContent,
 } from './roles';
 import { verifyIdentityToken } from './verify';
+import { loginWidget } from './widget';
 
 const engine9Id = {
   mount,
+  loginWidget,
   bindContent,
   gateFromElement,
   CONTENT_ATTRIBUTES,

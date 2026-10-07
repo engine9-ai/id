@@ -13,10 +13,11 @@ export {
   authorizeUrl,
   bridgeUrl,
   logoutUrl,
+  logoutBridgeUrl,
   domainFromUrl,
   parseDelegateCallback,
 } from './url';
-export { listenForDelegateIdentity, openIdentityPopup } from './popup';
+export { listenForDelegateIdentity, openIdentityPopup, openLogoutPopup } from './popup';
 export { DelegateIdentityError } from './errors';
 export { DEFAULT_DELEGATE_URL } from './types';
 export {
@@ -34,6 +35,7 @@ export {
   createPersonForm,
 } from './forms';
 export { createDelegateProvider } from './provider';
+export { loginWidget } from './widget';
 
 export type {
   ChangeDelegateInfoOptions,
@@ -56,6 +58,7 @@ export type {
   Jwk,
   Jwks,
   LoginLevel,
+  LogoutOptions,
   Prompt,
   RequestIdentityOptions,
   ResponseMode,
@@ -83,6 +86,14 @@ export type {
   NormalizePersonOptions,
   CreatePersonFormOptions,
 } from './forms';
+export type {
+  LoginWidget,
+  LoginWidgetContext,
+  LoginWidgetLabels,
+  LoginWidgetOptions,
+  LoginWidgetRole,
+  LoginWidgetUser,
+} from './widget';
 export type {
   IdentityProvider,
   ProviderConfig,

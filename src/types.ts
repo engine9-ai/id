@@ -92,6 +92,7 @@ export interface Engine9IdProvider {
     optionalFields?: string[];
     prompt?: Prompt;
     loginLevel?: LoginLevel;
+    expiresIn?: number;
     nonce?: string;
     state?: string;
     responseMode?: ResponseMode;
@@ -104,6 +105,7 @@ export interface Engine9IdProvider {
     optionalFields?: string[];
     prompt?: Prompt;
     loginLevel?: LoginLevel;
+    expiresIn?: number;
     nonce?: string;
     state?: string;
   }): Promise<string> | string;
@@ -111,6 +113,7 @@ export interface Engine9IdProvider {
     domain: string;
     returnTo?: string;
   }): Promise<string> | string;
+  buildLogoutBridgeUrl?(opts: { domain: string }): string;
   messageOrigin?(config: DelegateConfiguration): string;
   verifyToken(
     token: string,
@@ -141,6 +144,12 @@ export interface Engine9IdConfig {
    * override it. See `LoginLevel`.
    */
   loginLevel?: LoginLevel;
+  /**
+   * Identity Token lifetime in seconds for every login from this client
+   * (`expires_in`). Delegate defaults to 28800 (8 hours) and clamps at 30
+   * days. Each request can override it.
+   */
+  expiresIn?: number;
 }
 
 export interface RequestIdentityOptions {
@@ -151,6 +160,11 @@ export interface RequestIdentityOptions {
   prompt?: Prompt;
   /** Sign-in screen for this request. Default: the client's `loginLevel`, else `3`. */
   loginLevel?: LoginLevel;
+  /**
+   * Identity Token lifetime in seconds. Default: the client's `expiresIn`.
+   * Delegate defaults to 28800 (8 hours) and clamps at 30 days.
+   */
+  expiresIn?: number;
   mode: IdentityMode;
   returnTo?: string;
   responseMode?: ResponseMode;
@@ -167,6 +181,7 @@ export interface ChangeDelegateInfoOptions {
   fields?: string[];
   optionalFields?: string[];
   loginLevel?: LoginLevel;
+  expiresIn?: number;
   mode?: IdentityMode;
   returnTo?: string;
   responseMode?: ResponseMode;
@@ -179,6 +194,7 @@ export interface EnsureLevelOptions {
   optionalFields?: string[];
   prompt?: Prompt;
   loginLevel?: LoginLevel;
+  expiresIn?: number;
   returnTo?: string;
   responseMode?: ResponseMode;
 }
@@ -204,6 +220,7 @@ export interface DelegateConfiguration {
   identity_authorize_endpoint: string;
   identity_bridge_endpoint: string;
   logout_endpoint: string;
+  logout_bridge_endpoint?: string;
   fields_endpoint?: string;
   levels_supported?: number[];
   token_signing_alg_values_supported?: string[];
@@ -249,9 +266,22 @@ export interface GateOptions {
   onChange?: (allowed: boolean, identity: Identity | null) => void;
 }
 
+export interface LogoutOptions {
+  /** Also end the visitor's Delegate session. Default `false` (this website only). */
+  delegate?: boolean;
+  /**
+   * How to reach Delegate when `delegate` is true. `redirect` (default) sends
+   * this page to `/identity/logout` and back. `popup` ends the session in a
+   * small window and stays on this page; it falls back to redirect when blocked.
+   */
+  mode?: IdentityMode;
+}
+
 export interface Engine9Id {
   getDomainUnid(): Promise<string>;
   getIdentity(): Identity | null;
+  /** The stored Identity Token (JWT) for a Site server to verify, or null when there is none. */
+  getToken(): string | null;
   requestIdentity(opts: RequestIdentityOptions): Promise<Identity | void>;
   handleCallback(): Promise<Identity | null>;
   ensureLevel(n: number, opts?: EnsureLevelOptions): Promise<Identity | void>;
@@ -261,7 +291,11 @@ export interface Engine9Id {
    * or change what they share. Resolves with the re-issued identity.
    */
   changeDelegateInfo(opts?: ChangeDelegateInfoOptions): Promise<Identity | void>;
-  logout(opts?: { delegate?: boolean }): void;
+  /**
+   * Forget the identity on this website (synchronously), and optionally end
+   * the Delegate session. Resolves when Delegate has answered a popup logout.
+   */
+  logout(opts?: LogoutOptions): Promise<void>;
   onChange(cb: (identity: Identity | null) => void): () => void;
   /**
    * Show or block content by Identity Level. Evaluates now and on every

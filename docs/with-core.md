@@ -36,29 +36,55 @@ The public key is the `E9_PUBLIC_API_KEY` line that `npx e9core setup` writes
 to `.env` (`e9publickey_…`). It is safe in page JavaScript: it can add people
 and log in, nothing else.
 
+The [login widget](../README.md#the-login-widget) is the main way to wire
+these up. Its `onLogin` runs after every login and email switch, so core
+always has the current token; its Role section calls `changeRole`:
+
 ```html
+<span data-e9-login-widget></span>
+<div data-e9-min-level="1" hidden>Logged-in content (soft gate)</div>
+
 <script src="https://unpkg.com/@engine9/id@1/dist/id.iife.js"></script>
 <script>
   const id = engine9Id.mount({
     core: { apiUrl: '/api', publicApiKey: 'e9publickey_…' },
   });
-  id.onChange(async (identity) => {
-    if (identity && identity.level >= 1) await id.core.login();
+  const VIP = '5f2ab45c-…'; // segment id (role_id === segment_id)
+  const widget = engine9Id.loginWidget({
+    id,
+    roles: [{ id: VIP, name: 'VIP', requiredAuth: { minLevel: 1 } }],
+    async onLogin() {
+      const { session } = await id.core.login();
+      return { email: session.fields?.email, role: session.roles?.[0] ?? null, level: session.level };
+    },
+    async onRoleChange(roleId) {
+      await id.core.changeRole(roleId);
+    },
   });
+  // Returning visitor: show the role core already has.
+  id.ready.then(() => id.getIdentity() && id.core.me())
+    .then((session) => session && widget.update({ role: session.roles?.[0] ?? null }))
+    .catch(() => {});
 </script>
-<button data-e9-login>Log in</button>
-<button data-e9-change-delegate hidden>Change your Delegate information</button>
-<div data-e9-min-level="1" hidden>Logged-in content (soft gate)</div>
 ```
 
-**Change your Delegate information** matters most with core, because roles
-often depend on the email address. Delegate remembers which address a person
-shares with your Domain, so logging in again returns the same one. The button
-reopens the share page so they can pick another. The new token fires
-`onChange`, which calls `id.core.login()` again and re-reads roles. Picking
-another address keeps the same Domain UNID and `person_id`; a different
-Google account is a different person to core. Show it next to Log out and
-on any access-denied message.
+Core enforces the role (a real 403); the widget only offers it and locks
+roles whose `requiredAuth.minLevel` the visitor does not meet.
+
+**Switch email** matters most with core, because roles often depend on the
+email address. Delegate remembers which address a person shares with your
+Domain, so logging in again returns the same one. Switch email reopens the
+share page so they can pick another. The new token goes through `onLogin`,
+which calls `id.core.login()` again and re-reads roles. Picking another
+address keeps the same Domain UNID and `person_id`; a different Google
+account is a different person to core. On an access-denied message, add a
+`data-e9-change-delegate` button (or call `widget.open()`) so the fix is one
+click away.
+
+A Site whose server sets its own session cookie (like
+[`demo-festival`](../../demo-festival)) passes that session as the widget's
+`user` and posts the token to its own route in `onLogin`; see
+[With a server session](../README.md#with-a-server-session).
 
 Core's `/api/auth/*` routes are on whenever the host has `SESSION_SECRET`
 (setup writes it). Core takes the JWT `aud` from the page `Origin` header, so
