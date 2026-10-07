@@ -4,7 +4,7 @@
 optional HTTP submit so Sites can grow into `@engine9/core` without renaming
 forms.
 
-Canonical columns live in `@engine9/interfaces`:
+Canonical columns live in `@engine9/schemas`:
 
 | Package | Fields |
 | --- | --- |

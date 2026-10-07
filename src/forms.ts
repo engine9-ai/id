@@ -1,10 +1,10 @@
 import type { FetchImpl } from './types';
 
-/** Canonical `@engine9/interfaces/person_email.email_type` values. */
+/** Canonical `@engine9/schemas/person_email.email_type` values. */
 export const EMAIL_TYPES = ['Personal', 'Work', 'Other'] as const;
 export type EmailType = (typeof EMAIL_TYPES)[number];
 
-/** Canonical `@engine9/interfaces/person_phone.phone_type` values. */
+/** Canonical `@engine9/schemas/person_phone.phone_type` values. */
 export const PHONE_TYPES = [
   'Personal',
   'Cell',

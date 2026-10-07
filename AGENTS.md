@@ -9,7 +9,7 @@ them in the browser.
 `@engine9/id` is MIT licensed. See [LICENSE](LICENSE). Use, copy, modify, and
 distribute this code as-is. No further permission is required.
 
-`@engine9/core`, `@engine9/interfaces`, `demo-festival`, and `demo-id` are
+`@engine9/core`, `@engine9/schemas`, `demo-festival`, and `demo-id` are
 also MIT. The private repositories `delegate` and `server` are not open
 source. Do not copy code from those repositories under this license.
 
@@ -39,6 +39,8 @@ APIs. The JWT claim remains `aud`.
 - `src/levels.ts` — `@engine9/id/levels` (incl. `meetsGate`)
 - `src/roles.ts` — `@engine9/id/roles` (declared roles / soft `requiredAuth`)
 - `src/forms.ts` — `@engine9/id/forms` (interface person field helpers)
+- `src/widget.ts` — `@engine9/id/widget`: `loginWidget()`, one Login
+ button + dialog (log in, switch email, change role, log out)
 - `src/provider.ts` — pluggable IdentityProvider (Delegate default)
 - `src/core.ts` — `@engine9/id/core`
 - `src/verify.ts` — WebCrypto ES256 + claim checks
