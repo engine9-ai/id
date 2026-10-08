@@ -61,6 +61,27 @@ const evaluation = evaluateDeclaredRole(roles.activist, {
 `meetsRequiredAuth` mirrors core policy: `minLevel` against `identity.level`,
 `twoFactor` against `identity.auth.two_factor`.
 
+## Picking a role in the login widget
+
+Pass the same registry to the [login widget](../README.md#the-login-widget)
+and visitors claim a role from its dialog. It locks roles whose
+`requiredAuth` the visitor's Level does not meet:
+
+```js
+import { loginWidget } from '@engine9/id/widget';
+
+loginWidget({
+  id,
+  roles, // the registry above
+  role: localStorage.getItem('role'),
+  onRoleChange: (roleId) => localStorage.setItem('role', roleId),
+});
+```
+
+Then pass the claimed role id in `claimedIds` to `evaluateDeclaredRole` /
+`visibleContent`. [demo-id](../../demo-id) does this
+for `activist`.
+
 Anyone who can run JavaScript on the page can forge claims or read a stored
 token. Soft visibility is for **content customization**, not privileged
 actions. Hard gates belong in core.

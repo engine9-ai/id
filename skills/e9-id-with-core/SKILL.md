@@ -22,31 +22,22 @@ e9 create-api-key --scopes public
 Use the `e9publickey_` value only in the browser. Private `e9key_` keys stay
 on the server.
 
-## 2. Client
+## 2. The Login button
+
+The login widget is the default way to use Delegate. Put it in the header of
+every page instead of separate Log in / Change / Log out buttons, and call
+core from its hooks:
 
 ```js
-const id = createEngine9Id({
-  delegateUrl: "https://delegate.engine9.ai",
+import { mount } from "@engine9/id";
+import { loginWidget } from "@engine9/id/widget";
+
+const id = mount({
   core: {
     apiUrl: "/api",
     publicApiKey: "e9publickey_…",
   },
 });
-
-await id.handleCallback();
-await id.requestIdentity({ minLevel: 1, mode: "popup" });
-const session = await id.core.login();
-const me = await id.core.me();
-```
-
-`login()` POSTs `{ delegate_token }` to `/auth/login`. The host may also set
-an HttpOnly cookie from the returned `token` (HMAC Core Session).
-
-On a page, wire those through the login widget (the main way to interact
-with Delegate) instead of separate buttons:
-
-```js
-import { loginWidget } from "@engine9/id/widget";
 
 loginWidget({
   id,
@@ -62,7 +53,19 @@ loginWidget({
 ```
 
 `onLogin` also runs after **Switch email**, so core re-reads roles for the
-new address. Core enforces roles; the widget only offers them.
+new address. Core enforces roles; the widget only offers them. The page
+needs `<span data-e9-login-widget></span>` where the button goes.
+
+Underneath (for reads after login, or a page with its own controls):
+
+```js
+await id.requestIdentity({ minLevel: 1, mode: "popup" }); // what the widget's Login does
+const session = await id.core.login();
+const me = await id.core.me();
+```
+
+`login()` POSTs `{ delegate_token }` to `/auth/login`. The host may also set
+an HttpOnly cookie from the returned `token` (HMAC Core Session).
 
 ## 3. Roles
 

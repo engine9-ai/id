@@ -51,7 +51,10 @@ session").
 `data-e9-login` buttons are for one step inside content (a paywall's "Log in
 to continue", "Confirm email" before comments). Hooks:
 `id.gate({ minLevel, onAllow, onBlock })`. Gates are soft (hidden
-attribute); hard gates need core. The steps below are the lower-level API.
+attribute); hard gates need core.
+
+Step 1 applies to every site. Steps 2–5 are the lower-level API, for a page
+that builds its own controls instead of the widget.
 
 ## 1. Register the Domain
 
@@ -97,7 +100,7 @@ await id.handleCallback();
 </script>
 ```
 
-## 3. Request identity on a user gesture
+## 3. Request identity on a user gesture (without the widget)
 
 ```js
 document.getElementById("signin").onclick = async () => {
