@@ -16,7 +16,7 @@ export const PHONE_TYPES = [
 export type PhoneType = (typeof PHONE_TYPES)[number];
 
 /**
- * Form / inbound people fields aligned with interfaces + core POST /people.
+ * Form / inbound people fields aligned with @engine9/schemas + core POST /people.
  * Token fields (`display_name`) are optional display-only extras.
  */
 export const PERSON_FORM_FIELDS = [
@@ -72,7 +72,7 @@ function normalizePhoneType(value: unknown): PhoneType | undefined {
 }
 
 /**
- * Normalize arbitrary form / JSON input to snake_case interface field names.
+ * Normalize arbitrary form / JSON input to snake_case schema field names.
  * Never maps `name` → given/family (callers must send given_name / family_name).
  * Never accepts `type` as email_type.
  */

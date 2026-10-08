@@ -106,7 +106,7 @@ and enforcing in core — see [declared-roles.md](./declared-roles.md).
 
 ## People form fields
 
-Public register / `POST /people` payloads should use interface names:
+Public register / `POST /people` payloads should use schema field names:
 `given_name`, `family_name`, `email`, `email_type` (and optionally `phone`,
 `phone_type`). See [forms.md](./forms.md).
 

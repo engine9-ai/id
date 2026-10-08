@@ -20,7 +20,7 @@ First-time steps: [deploy.md](./deploy.md).
   log out locally.
 - Declare **page-local roles** with `requiredAuth.minLevel` and soft-show
   content (never a hard gate).
-- Submit self-asserted Level 1 data with interface field names
+- Submit self-asserted Level 1 data with schema field names
   (`given_name`, `family_name`, `email`, `email_type`, …) to *your* backend if
   you have one.
 - Swap the default Delegate provider via `createEngine9Id({ provider })` when

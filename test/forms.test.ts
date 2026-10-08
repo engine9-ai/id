@@ -9,7 +9,7 @@ import {
 } from '../src/forms';
 
 describe('PERSON_FORM_FIELDS', () => {
-  it('uses interface snake_case names including email_type', () => {
+  it('uses schema snake_case names including email_type', () => {
     expect(PERSON_FORM_FIELDS).toContain('given_name');
     expect(PERSON_FORM_FIELDS).toContain('family_name');
     expect(PERSON_FORM_FIELDS).toContain('email');

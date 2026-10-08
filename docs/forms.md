@@ -1,4 +1,4 @@
-# Person forms (interface field names)
+# Person forms (schema field names)
 
 `@engine9/id` does not write a database. It standardizes **field names** and
 optional HTTP submit so Sites can grow into `@engine9/core` without renaming
@@ -17,7 +17,7 @@ Identity Tokens may also include `display_name` (display only — not a
 
 ## Rules
 
-- Use snake_case interface names in HTML `name` attributes and JSON.
+- Use snake_case schema field names in HTML `name` attributes and JSON.
 - Do **not** use a single `name` field (split client-side). Prefer
   `given_name` / `family_name`.
 - Do **not** use `type` for email category — use `email_type`.
