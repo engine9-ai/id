@@ -360,10 +360,8 @@ for it.
 - `POST /user/verify/phone` — start Level 2 phone confirmation
 - `POST /user/verify/confirm` — `{ channel, code }`
 
-Human pages: `GET /user` manages fields, email addresses, and connected
-Domains. It posts `POST /grants/:id/fields` (`share`, `email`) to change what
-a Domain receives. `GET /user/emails/add?return_to=<path>` adds an address,
-then returns to a path on delegate (the consent page links here).
+Human page: `GET /user/emails/add?return_to=<path>` adds an address, then
+returns to a path on delegate (the consent page links here).
 
 ## Logout
 

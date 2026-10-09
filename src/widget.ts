@@ -445,7 +445,7 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
       ? `<span class="brand">${DELEGATE_MARK}<span>Delegate</span></span>`
       : '';
     const foot = branding
-      ? `<p class="foot">Sign-in by <a href="${esc(delegateBase)}" target="_blank" rel="noreferrer">Delegate</a> · <a href="${esc(`${delegateBase}/user`)}" target="_blank" rel="noreferrer">Your Delegate details</a></p>`
+      ? `<p class="foot">Sign-in by <a href="${esc(delegateBase)}" target="_blank" rel="noreferrer">Delegate</a></p>`
       : '';
     dialog.innerHTML =
       `<div class="top">${top}<button class="x" type="button" data-action="close" aria-label="Close">×</button></div>` +
