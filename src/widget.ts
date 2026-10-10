@@ -12,12 +12,12 @@
  */
 
 import { createEngine9Id } from './client';
-import { DelegateIdentityError } from './errors';
+import { DelegateIdentityError, insecureDomainMessage } from './errors';
 import { describeLevel } from './levels';
 import { meetsRequiredAuth, type DeclaredRoleRegistry, type RequiredAuth } from './roles';
 import type { Engine9Id, Engine9IdConfig, Identity } from './types';
 import { DEFAULT_DELEGATE_URL } from './types';
-import { trimSlash } from './url';
+import { isInsecureUrl, trimSlash } from './url';
 
 export interface LoginWidgetRole {
   id: string;
@@ -232,6 +232,10 @@ label.check { display: flex; gap: 8px; align-items: center; font-size: .9em; col
 .status { margin: 10px 0 0; font-size: .9em; min-height: 0; }
 .status:empty { display: none; }
 .status.err { color: var(--e9-danger); }
+.refused {
+  padding: 12px 14px; border-radius: 12px; font-weight: 600; color: var(--e9-danger);
+  border: 1px solid currentColor; background: var(--e9-surface); overflow-wrap: anywhere;
+}
 .foot { margin: 12px 0 0; font-size: .8em; color: var(--e9-muted); text-align: center; }
 .foot a { color: inherit; }
 `;
@@ -298,6 +302,8 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
   const delegateBase = trimSlash(options.delegateUrl ?? DEFAULT_DELEGATE_URL);
   const siteName =
     options.siteName ?? (typeof location !== 'undefined' ? location.hostname : 'this site');
+  const insecurePage =
+    typeof location !== 'undefined' && isInsecureUrl(location.href) ? location.href : null;
   const minLevel = Math.max(1, options.minLevel ?? 1);
   const request = {
     minLevel,
@@ -378,6 +384,9 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
   };
 
   const signedOutBody = (): string => {
+    if (insecurePage) {
+      return `<p class="refused" role="alert">${esc(insecureDomainMessage(insecurePage))}</p>`;
+    }
     const asked = (options.fields ?? ['display_name', 'email']).map((f) => FIELD_NAMES[f] ?? f);
     const level = describeLevel(minLevel);
     const loginText = options.loginLevel === 2 ? labels.googleOrEmail : labels.google;
@@ -463,6 +472,10 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
 
   const describeError = (error: unknown): string => {
     const code = error instanceof DelegateIdentityError ? error.code : undefined;
+    if (code === 'insecure_domain') {
+      const href = insecurePage ?? (typeof location !== 'undefined' ? location.href : '');
+      return href ? insecureDomainMessage(href) : 'Login is not available because the connection is not secure.';
+    }
     if (code === 'access_denied') return 'The Delegate window closed before it finished. Try again when you are ready.';
     if (code === 'level_unavailable') return `Delegate did not share what ${siteName} needs, so you are not logged in.`;
     if (code === 'invalid_domain') return `Delegate does not accept ${siteName} yet. The site operator needs to register it.`;

@@ -1,5 +1,5 @@
 import { createCoreClient } from './core';
-import { DelegateIdentityError, delegateReturnedError } from './errors';
+import { DelegateIdentityError, delegateReturnedError, insecureDomainError } from './errors';
 import { meetsGate, meetsLevel } from './levels';
 import { createDebugLog } from './log';
 import { defaultConfiguration } from './discovery';
@@ -22,6 +22,7 @@ import type {
 import { DEFAULT_DELEGATE_URL } from './types';
 import {
   domainFromUrl,
+  isInsecureUrl,
   parseDelegateCallback,
   stripCallbackParams,
   trimSlash,
@@ -138,8 +139,13 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     if (!domain) {
       throw new DelegateIdentityError('invalid_domain', 'createEngine9Id requires domain');
     }
-    const { nonce, state } = beginRequest();
     const returnTo = opts.returnTo ?? currentHref();
+    const insecure = [currentHref(), returnTo].find(isInsecureUrl);
+    if (insecure) {
+      log('request:insecure', { url: insecure });
+      throw insecureDomainError(insecure);
+    }
+    const { nonce, state } = beginRequest();
     const loginLevel = opts.loginLevel ?? config.loginLevel;
     const expiresIn = opts.expiresIn ?? config.expiresIn;
     log('request', {

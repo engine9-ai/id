@@ -17,6 +17,22 @@ export function domainFromUrl(urlOrOrigin: string): string | null {
   }
 }
 
+/**
+ * True for a plain `http:` page that is not `localhost` / `127.0.0.1`.
+ * Login refuses these pages: Delegate only returns Identity Tokens to https
+ * (or local development), and browsers withhold WebCrypto there anyway.
+ */
+export function isInsecureUrl(href: string): boolean {
+  try {
+    const u = new URL(href);
+    if (u.protocol !== 'http:') return false;
+    const host = u.hostname.toLowerCase();
+    return host !== 'localhost' && host !== '127.0.0.1';
+  } catch {
+    return false;
+  }
+}
+
 export interface AuthorizeUrlOptions {
   delegateUrl: string;
   domain: string;

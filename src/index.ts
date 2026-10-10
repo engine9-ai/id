@@ -15,6 +15,7 @@ export {
   logoutUrl,
   logoutBridgeUrl,
   domainFromUrl,
+  isInsecureUrl,
   parseDelegateCallback,
 } from './url';
 export { listenForDelegateIdentity, openIdentityPopup, openLogoutPopup } from './popup';

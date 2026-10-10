@@ -556,6 +556,7 @@ same Identity Token, maps it to a `person_id`, and enforces roles with a real
 | Symptom                                                   | Fix                                                                                           |
 | --------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | Delegate says the domain is not allowed (`invalid_domain`) | Register the exact Domain. `www.example.com` and `example.com` are different; so is the port  |
+| "Login is not available on http://… because the connection is not secure" (`insecure_domain`) | The page is plain `http://`. Login works only on `https://`, or `http://localhost` / `127.0.0.1` for development |
 | Nothing happens on click                                  | The page is `file://`, or the click did not come from a user gesture. Serve over http(s)      |
 | Popup opens and closes, page unchanged                    | Check the console: `onError` receives the code. `access_denied` = visitor closed the window, or the window lost its link to this page (`error.details.reason === 'popup_closed'`; a Cloudflare bot check on Delegate causes this); `level_unavailable` = they chose "Stay anonymous" or declined a required field |
 | You need to see each login step                           | `createEngine9Id({ debug: true })` logs every step to the console with the prefix `[engine9-id]` |

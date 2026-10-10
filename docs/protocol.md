@@ -202,6 +202,10 @@ Query:
 Rules:
 
 - `domainFromUrl(return_to)` must equal `domain`.
+- `return_to` must be `https:`, or `http:` on `localhost` / `127.0.0.1`.
+  Any other `http:` page gets a `400` HTML page that tells the visitor the
+  connection is not secure (`insecure_domain`). Delegate does not redirect
+  back to that page.
 - `domain` must pass `ALLOWED_DOMAINS` or be listed in the `domain` table
   with `allowed = 1`.
 - `return_to` on `/login`, `POST /auth/session`, `/identity/logout`, and
@@ -239,6 +243,11 @@ Error: `return_to?error=<code>&state=<state>`
 
 Codes: `interaction_required`, `login_required`, `level_unavailable`,
 `access_denied`, `invalid_domain`, `invalid_request`.
+
+`insecure_domain` is never sent to `return_to`. Delegate shows it as a page
+(above). `@engine9/id` raises it itself before it opens a popup or
+redirects. Its `requestIdentity` rejects with `insecure_domain` on any plain
+`http:` page other than `localhost` / `127.0.0.1`.
 
 ## Sign-in screen (`login_level`)
 
@@ -311,6 +320,11 @@ Codes are the same as the authorize `error=` codes. `@engine9/id` rejects
 message rejects with `access_denied`.
 
 `targetOrigin` is the Domain’s page origin (`return_to` origin). Then the popup closes.
+
+Without `return_to`, that origin is `https://<domain>` (`http://` for
+`localhost` / `127.0.0.1`). A plain `http:` opener would never receive the
+message. When the `Referer` is a plain `http:` page on the same Domain, the
+bridge shows the `insecure_domain` refusal page (`400`) and issues no token.
 
 `GET /whoami` returns `{ unid, isNew, loggedIn, email, signInProvider }` for this browser, without an Identity Token. `GET /whoami/bridge?origin=` is the top-level popup that posts `{ "type": "delegate-whoami", unid, isNew, loggedIn, email, signInProvider }`.
 
