@@ -200,7 +200,7 @@ section. Page-local roles like these are
 | `user` | from the Identity Token | Your server session's `{ email, role, level }`. Set it when your session outlives the token |
 | `onLogin(identity, token)` | none | After login or an email switch. Send `token` to your server; return the new `user` |
 | `onLogout()` | none | End your server session |
-| `logoutDelegate` | `'ask'` | `'ask'` shows "Also sign out of Delegate"; `true` always; `false` never |
+| `logoutDelegate` | `false` | `false` logs out of this site only; `'ask'` adds a checkbox to also end the Delegate session; `true` always ends it |
 | `onError` | `console.warn` | Every error the dialog shows |
 
 The widget returns `{ element, id, open(), close(), update({ user?, role? }), destroy() }`.

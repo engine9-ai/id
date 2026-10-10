@@ -106,8 +106,9 @@ export interface LoginWidgetOptions extends Engine9IdConfig {
    */
   onLogout?(): void | Promise<void>;
   /**
-   * End the Delegate session too on Log out. `ask` (default) shows a checkbox.
-   * Delegate logout opens a small popup; the page does not navigate.
+   * End the Delegate session too on Log out. `false` (default) logs out of
+   * this site only; `ask` shows a checkbox; `true` always. Delegate logout
+   * opens a small popup; the page does not navigate.
    */
   logoutDelegate?: boolean | 'ask';
   /** Called with every error the dialog shows. Default `console.warn`. */
@@ -417,7 +418,7 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
     const level = describeLevel(v.level);
     const role = currentRole();
     const below = v.level < minLevel;
-    const ask = options.logoutDelegate === undefined || options.logoutDelegate === 'ask';
+    const ask = options.logoutDelegate === 'ask';
     return (
       `<div class="card"><div class="email">${esc(v.email ?? 'Signed in')}</div>` +
       `<div class="fine">Level ${v.level} · ${esc(level.name)}${role ? ` · ${esc(role.name)}` : ''}</div></div>` +
@@ -535,7 +536,7 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
   const logout = (): Promise<void> => {
     const delegate =
       options.logoutDelegate === true ||
-      (options.logoutDelegate !== false && state.logoutDelegate);
+      (options.logoutDelegate === 'ask' && state.logoutDelegate);
     return run('Logging out…', async () => {
       if (state.user !== undefined) state.user = null;
       state.role = null;

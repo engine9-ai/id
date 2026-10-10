@@ -158,10 +158,21 @@ describe('loginWidget', () => {
     expect(p.role('vip').getAttribute('aria-pressed')).toBe('false');
   });
 
+  it('logs out of this site only by default', async () => {
+    const id = fakeId(identity());
+    widget = loginWidget({ id });
+    const p = parts(widget);
+    p.trigger.click();
+    expect(p.action('logout-delegate')).toBeNull();
+    p.action('logout')!.click();
+    await settle();
+    expect(id.logout).toHaveBeenCalledWith({ delegate: false, mode: 'popup' });
+  });
+
   it('logs out, asking whether to end the Delegate session too', async () => {
     const id = fakeId(identity());
     const onLogout = vi.fn();
-    widget = loginWidget({ id, onLogout });
+    widget = loginWidget({ id, onLogout, logoutDelegate: 'ask' });
     const p = parts(widget);
     p.trigger.click();
     const box = p.action('logout-delegate') as HTMLInputElement;
@@ -180,7 +191,6 @@ describe('loginWidget', () => {
       id,
       roles: ROLES,
       user: { email: 'member@example.com', role: 'admin', level: 3 },
-      logoutDelegate: false,
       onLogin: () => ({ email: 'server@example.com', level: 3, role: null }),
     });
     const p = parts(widget);
