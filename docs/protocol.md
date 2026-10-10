@@ -225,7 +225,8 @@ Behavior:
    checkboxes, the User's email addresses to pick from (the Grant's choice,
    else the default, preselected), a link to add another address, a link to
    use a different Google account, "Stay anonymous (Level 0)", and login when
-   required. On Share, `requested` is the union of the old list and this
+   required. Share stays disabled until every required field has a value. On
+   Share, `requested` is the union of the old list and this
    request, `required` is this request's required list, `shared` is what the
    User checked, and the picked address is stored on the Grant. A picked
    address that is not on the User is `invalid_request`. Declining a required
