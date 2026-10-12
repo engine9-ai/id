@@ -79,7 +79,7 @@ npm install @engine9/id
 ```
 
 ```js
-import { createEngine9Id } from "@engine9/id";
+import { createEngine9Id, isStateMismatch } from "@engine9/id";
 
 const id = createEngine9Id({
   delegateUrl: "https://delegate.engine9.ai",
@@ -87,7 +87,12 @@ const id = createEngine9Id({
   storage: "session",
 });
 
-await id.handleCallback();
+try {
+  await id.handleCallback();
+} catch (err) {
+  // state_mismatch: the return answered another request. Show Log in, not an error.
+  if (!isStateMismatch(err)) throw err;
+}
 ```
 
 **script tag** (after `npm run build` in this repo)
@@ -96,9 +101,13 @@ await id.handleCallback();
 <script src="/id.iife.js"></script>
 <script>
   const id = engine9Id.createEngine9Id();
-  id.handleCallback();
+  id.handleCallback().catch((err) => {
+    if (!engine9Id.isStateMismatch(err)) console.warn(err);
+  });
 </script>
 ```
+
+`mount()` and `loginWidget()` already ignore `state_mismatch`.
 
 ## 3. Request identity on a user gesture (without the widget)
 
@@ -132,6 +141,13 @@ Redirect/query `error=`: `interaction_required`, `login_required`,
 `level_unavailable`, `access_denied`, `invalid_domain`, `invalid_request`.
 
 Popup blocked: fall back to `mode: "redirect"`.
+
+`state_mismatch` (from `handleCallback()` or `requestIdentity()`): the
+return answered a request this browser does not have (another tab, an old
+popup, an email link opened in another browser). It is "sign in again",
+never "expired": leave the visitor signed out with a Log in button. A server
+callback that keeps its own `state` restarts the login once instead of
+erroring.
 
 ## Framework snippets
 

@@ -9,6 +9,7 @@
  */
 
 import { createEngine9Id } from './client';
+import { isStateMismatch } from './errors';
 import { describeLevel, meetsGate, meetsLevel, type ContentGate } from './levels';
 import type {
   Engine9Id,
@@ -286,7 +287,8 @@ export function mount(options: MountOptions = {}): MountedEngine9Id {
   const ready = id
     .handleCallback()
     .catch((error: unknown) => {
-      report(error);
+      // Not a failure: the page stays signed out and Login starts over.
+      if (!isStateMismatch(error)) report(error);
       return null;
     })
     .then((identity) => {

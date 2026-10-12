@@ -19,7 +19,7 @@ export {
   parseDelegateCallback,
 } from './url';
 export { listenForDelegateIdentity, openIdentityPopup, openLogoutPopup } from './popup';
-export { DelegateIdentityError } from './errors';
+export { DelegateIdentityError, isStateMismatch, STATE_MISMATCH } from './errors';
 export { DEFAULT_DELEGATE_URL } from './types';
 export {
   meetsRequiredAuth,
@@ -63,6 +63,8 @@ export type {
   Prompt,
   RequestIdentityOptions,
   ResponseMode,
+  SignInBrand,
+  SignInGoogleButton,
   StorageKind,
 } from './types';
 export type { ContentGate, LevelDescription } from './levels';

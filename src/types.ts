@@ -79,6 +79,35 @@ export interface CoreConfig {
   publicApiKey: string;
 }
 
+/**
+ * Delegate's Google button. `standard`: Google's white button. `brand`: the
+ * brand color, "Continue with Google". `skip`: straight to Google on a
+ * full-page sign-in where Google is the only choice; `brand` in a popup.
+ */
+export type SignInGoogleButton = 'standard' | 'brand' | 'skip';
+
+/**
+ * How Delegate's sign-in page and email present this site. Sent on each
+ * request (`brand_name`, `brand_color`, `brand_logo`, `brand_background`,
+ * `brand_text`, `brand_font`, `brand_google`); Delegate stores none of it
+ * and always shows the Domain next to the name. Invalid values are ignored.
+ */
+export interface SignInBrand {
+  /** Display name, up to 60 characters. Default: the Domain. */
+  name?: string;
+  /** `#rgb` or `#rrggbb` for buttons. */
+  color?: string;
+  /** `https` image on this Domain or a subdomain of it, shown about 48px tall. */
+  logo?: string;
+  /** `#rgb` or `#rrggbb` for the sign-in page (not the email). */
+  background?: string;
+  /** `#rgb` or `#rrggbb` text on `background`. Ignored below 4.5:1 contrast. */
+  text?: string;
+  /** `system`, `sans`, `serif`, `rounded`, `mono`, or a Google Fonts family (`IBM Plex Sans`). */
+  font?: string;
+  google?: SignInGoogleButton;
+}
+
 /** Minimal provider surface accepted on createEngine9Id (avoids circular imports). */
 export interface Engine9IdProvider {
   readonly id: string;
@@ -92,6 +121,7 @@ export interface Engine9IdProvider {
     optionalFields?: string[];
     prompt?: Prompt;
     loginLevel?: LoginLevel;
+    brand?: SignInBrand;
     expiresIn?: number;
     nonce?: string;
     state?: string;
@@ -105,6 +135,7 @@ export interface Engine9IdProvider {
     optionalFields?: string[];
     prompt?: Prompt;
     loginLevel?: LoginLevel;
+    brand?: SignInBrand;
     expiresIn?: number;
     nonce?: string;
     state?: string;
@@ -144,6 +175,8 @@ export interface Engine9IdConfig {
    * override it. See `LoginLevel`.
    */
   loginLevel?: LoginLevel;
+  /** Name, color, and logo on Delegate's sign-in page and email. Each request can override it. */
+  brand?: SignInBrand;
   /**
    * Identity Token lifetime in seconds for every login from this client
    * (`expires_in`). Delegate defaults to 28800 (8 hours) and clamps at 30
@@ -160,6 +193,8 @@ export interface RequestIdentityOptions {
   prompt?: Prompt;
   /** Sign-in screen for this request. Default: the client's `loginLevel`, else `3`. */
   loginLevel?: LoginLevel;
+  /** Sign-in branding for this request. Default: the client's `brand`. */
+  brand?: SignInBrand;
   /**
    * Identity Token lifetime in seconds. Default: the client's `expiresIn`.
    * Delegate defaults to 28800 (8 hours) and clamps at 30 days.

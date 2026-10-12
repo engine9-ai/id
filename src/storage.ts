@@ -77,6 +77,11 @@ function webStorage(kind: 'session' | 'local'): Storage | null {
   }
 }
 
+/** True when values outlive a page load (localStorage / sessionStorage). */
+export function isPersistentStore(store: KeyValueStore): boolean {
+  return store instanceof WebStore;
+}
+
 export function createStorage(kind: StorageKind = 'session'): KeyValueStore {
   if (kind === 'memory') return new MemoryStore();
   const area = webStorage(kind);

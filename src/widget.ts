@@ -12,7 +12,7 @@
  */
 
 import { createEngine9Id } from './client';
-import { DelegateIdentityError, insecureDomainMessage } from './errors';
+import { DelegateIdentityError, insecureDomainMessage, isStateMismatch } from './errors';
 import { describeLevel } from './levels';
 import { meetsRequiredAuth, type DeclaredRoleRegistry, type RequiredAuth } from './roles';
 import type { Engine9Id, Engine9IdConfig, Identity } from './types';
@@ -75,7 +75,10 @@ export interface LoginWidgetOptions extends Engine9IdConfig {
   optionalFields?: string[];
   /** Show the Delegate mark and footer. Default `true`. */
   branding?: boolean;
-  /** Name in the dialog title. Default `location.hostname`. */
+  /**
+   * Name in the dialog title. Default `location.hostname`. Also the name on
+   * Delegate's sign-in page and email when `brand` is not set.
+   */
   siteName?: string;
   labels?: Partial<LoginWidgetLabels>;
   /** `auto` (default) follows `prefers-color-scheme`. */
@@ -273,9 +276,24 @@ function defaultOnError(error: unknown): void {
   if (typeof console !== 'undefined') console.warn('[engine9/id]', error);
 }
 
+/** Delegate sign-in branding: `brand`, else `siteName` as the name. */
+function signInBrand(options: LoginWidgetOptions): Engine9IdConfig['brand'] {
+  return options.brand ?? (options.siteName ? { name: options.siteName } : undefined);
+}
+
 function pickConfig(options: LoginWidgetOptions): Engine9IdConfig {
   const { provider, delegateUrl, domain, storage, core, fetchImpl, debug, loginLevel } = options;
-  return { provider, delegateUrl, domain, storage: storage ?? 'local', core, fetchImpl, debug, loginLevel };
+  return {
+    provider,
+    delegateUrl,
+    domain,
+    storage: storage ?? 'local',
+    core,
+    fetchImpl,
+    debug,
+    loginLevel,
+    brand: signInBrand(options),
+  };
 }
 
 interface View {
@@ -311,6 +329,7 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
     fields: options.fields,
     optionalFields: options.optionalFields,
     loginLevel: options.loginLevel,
+    brand: signInBrand(options),
     mode: 'popup' as const,
   };
 
@@ -479,6 +498,7 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
     if (code === 'access_denied') return 'The Delegate window closed before it finished. Try again when you are ready.';
     if (code === 'level_unavailable') return `Delegate did not share what ${siteName} needs, so you are not logged in.`;
     if (code === 'invalid_domain') return `Delegate does not accept ${siteName} yet. The site operator needs to register it.`;
+    if (isStateMismatch(error)) return 'That sign-in belonged to an earlier attempt. Log in again.';
     return error instanceof Error ? error.message : String(error);
   };
 
@@ -635,7 +655,10 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
     void id
       .handleCallback()
       .then((identity) => (identity ? afterIdentity(identity) : undefined))
-      .catch(onError)
+      .catch((error: unknown) => {
+        // Not a failure: the button stays on Login and the next login starts over.
+        if (!isStateMismatch(error)) onError(error);
+      })
       .finally(render);
   }
   render();

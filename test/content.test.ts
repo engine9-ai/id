@@ -333,4 +333,27 @@ describe('mount', () => {
     expect(q(root, '#paywall').hidden).toBe(false);
     id.unmount();
   });
+
+  it('leaves the page signed out, without an error, when the callback answers another request', async () => {
+    const root = html('<div id="paywall" data-e9-max-level="0">Teaser</div>');
+    const keys = await createTestKeys();
+    const token = await signIdentityToken(keys, { sub: `${DOMAIN}:elsewhere`, level: 1 });
+    sessionStorage.removeItem('delegate_state');
+    setPageUrl(`/article#delegate_token=${token}&state=from-another-browser`);
+    const onError = vi.fn();
+    const id = mount({
+      root,
+      delegateUrl: ISSUER,
+      domain: DOMAIN,
+      storage: 'session',
+      fetchImpl: mockDelegateFetch(keys.jwk),
+      onError,
+    });
+    expect(await id.ready).toBeNull();
+    expect(onError).not.toHaveBeenCalled();
+    expect(id.getIdentity()).toBeNull();
+    expect(q(root, '#paywall').hidden).toBe(false);
+    expect(location.hash).not.toContain('delegate_token');
+    id.unmount();
+  });
 });

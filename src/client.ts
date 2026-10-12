@@ -1,12 +1,17 @@
 import { createCoreClient } from './core';
-import { DelegateIdentityError, delegateReturnedError, insecureDomainError } from './errors';
+import {
+  DelegateIdentityError,
+  delegateReturnedError,
+  insecureDomainError,
+  STATE_MISMATCH,
+} from './errors';
 import { meetsGate, meetsLevel } from './levels';
 import { createDebugLog } from './log';
 import { defaultConfiguration } from './discovery';
 import { openIdentityPopup, openLogoutPopup } from './popup';
 import { createDelegateProvider } from './provider';
 import { randomId } from './random';
-import { createStorage, STORAGE_KEYS } from './storage';
+import { createStorage, isPersistentStore, STORAGE_KEYS } from './storage';
 import type {
   ChangeDelegateInfoOptions,
   Engine9Id,
@@ -120,8 +125,8 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
 
   const stateMismatch = (expected: string | null | undefined, received: string | undefined) =>
     new DelegateIdentityError(
-      'invalid_request',
-      'state mismatch: the Identity Token answers a different request (another tab, or an older popup or redirect). Start the login again.',
+      STATE_MISMATCH,
+      'This login answers a request this browser did not start or no longer has (another tab, an older popup or redirect, or an email link opened in another browser). Nothing expired; sign in again.',
       { step: 'state', expected: expected ?? null, received: received ?? null },
     );
 
@@ -147,6 +152,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     }
     const { nonce, state } = beginRequest();
     const loginLevel = opts.loginLevel ?? config.loginLevel;
+    const brand = opts.brand ?? config.brand;
     const expiresIn = opts.expiresIn ?? config.expiresIn;
     log('request', {
       mode: opts.mode,
@@ -166,6 +172,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       optionalFields: opts.optionalFields,
       prompt: opts.prompt,
       loginLevel,
+      brand,
       expiresIn,
       nonce,
       state,
@@ -250,7 +257,13 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       }
       if (!parsed.token) return null;
       const expectedState = storage.get(STORAGE_KEYS.state);
-      if (expectedState && parsed.state !== expectedState) {
+      // A state with nothing pending is someone else's request, unless the
+      // store forgot it (memory storage loses it on every redirect).
+      const unrecognized = expectedState
+        ? parsed.state !== expectedState
+        : Boolean(parsed.state) && isPersistentStore(storage);
+      if (unrecognized) {
+        log('callback:state_mismatch', { pending: Boolean(expectedState) });
         throw stateMismatch(expectedState, parsed.state);
       }
       const nonce = storage.get(STORAGE_KEYS.nonce) ?? undefined;

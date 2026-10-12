@@ -193,6 +193,9 @@ Query:
   signed-out browser sees. `3` offers Google only; `2` adds an email sign-in
   link. Ignored (treated as `3`) when `min_level` is 3 or more. See
   [Sign-in screen](#sign-in-screen-login_level).
+- `brand_name`, `brand_color`, `brand_logo`, `brand_background`,
+  `brand_text`, `brand_font`, `brand_google` — optional sign-in branding.
+  See [Branding](#branding).
 - `nonce`, `state` — opaque client values
 - `response_mode` — `fragment` (default) or `query`
 - `expires_in` — Identity Token lifetime in seconds (default `28800`, 8 hours).
@@ -283,6 +286,65 @@ Rules:
 - Sites that link to `/login` directly (not through authorize) can add
   `login_level=2` themselves.
 
+Email links and other browsers:
+
+- Delegate mails the link itself, branded for the Domain ("Sign in to
+  {name}", from "{name} via Delegate"). The link works once.
+- Opened in another tab of the browser that asked, it hands the sign-in to
+  the tab that asked, which continues the original request (popup or
+  redirect) as if Google had finished.
+- Opened in a different browser or app (a phone's mail app, an in-app
+  browser), the person confirms the address in the page and that browser is
+  signed in to Delegate. Delegate does **not** replay the original
+  `/identity/authorize` or `/identity/bridge` request there, because the
+  site's `state` and `nonce` live in the browser that asked. It offers
+  "Continue to {name}", which goes to the Domain's origin (`return_to`
+  origin, else `https://<domain>`). The site's next request is answered
+  from the new session.
+- Sites must treat a callback whose `state` they do not recognize as "start
+  sign-in again", not "your link expired". `@engine9/id` rejects it as
+  `state_mismatch` and `mount()` / `loginWidget()` drop it quietly. A server
+  callback with its own `state` restarts the login once.
+
+## Branding
+
+Optional, on `/identity/authorize` and `/identity/bridge`. Delegate stores
+none of it: it is read from each request and carried to `/login`. The
+sign-in email takes the name, color, and logo; the rest style `/login`
+only. Delegate's name stays in the footer and the email sender.
+
+| Param | Rule |
+| --- | --- |
+| `brand_name` | Display name, 1–60 characters, no `://` or `www.`. The Domain is always shown under it. Default: the Domain. |
+| `brand_color` | `#rgb` or `#rrggbb`, for buttons and the monogram. Delegate picks white or near-black text on it. Default `#1a73e8`. |
+| `brand_logo` | `https` image URL on the Domain's host or one of its subdomains (any scheme on `localhost`), up to 512 characters. Shown about 48px tall. Default: a monogram of the name's first letter. |
+| `brand_background` | `#rgb` or `#rrggbb` for the page; the card is tinted from it. Default: Delegate's light gray page and white card. |
+| `brand_text` | `#rgb` or `#rrggbb` for text on the background (on the white card when there is no `brand_background`). Ignored below 4.5:1 contrast. Default with a background: white or near-black, whichever reads. |
+| `brand_font` | `system`, `sans`, `serif`, `rounded`, `mono`, or a Google Fonts family name: letters, digits, and spaces, up to 40 characters (`IBM Plex Sans`). A family loads from `fonts.googleapis.com` at weights 400, 600, and 700, with the system font as fallback. Default `system`. |
+| `brand_google` | `standard`, `brand`, or `skip`. See below. Default `standard`. |
+
+`brand_google` sets the Google button on the sign-in screen:
+
+- `standard`: Google's white "Sign in with Google" button.
+- `brand`: the button takes `brand_color` and reads "Continue with
+  Google", so it looks like the next step after the site's own Log in
+  button rather than a second sign-in.
+- `skip`: no button when Delegate can go to Google by itself: a full-page
+  sign-in (`/identity/authorize`, no popup), Google the only method (no
+  `login_level=2`), no `prompt=consent`, and no signed-in Continue. Anywhere
+  else it acts as `brand`. A popup always needs the click: a browser blocks
+  a window opened without one, and Google cannot run inside the popup
+  (Google's Cross-Origin-Opener-Policy cuts it off from the site). If the
+  person comes back from Google without signing in, that tab shows the
+  button for the next 10 minutes instead of sending them back.
+
+Values that break a rule are ignored. A Domain that does not pass the
+allow rule gets Delegate's own look.
+
+`@engine9/id`: `createEngine9Id({ brand: { name, color, logo, background,
+text, font, google } })`, or `requestIdentity({ …, brand })` for one
+request. `@engine9/core`: `auth.identityUrl({ …, brand })`.
+
 Typical choices:
 
 | The site needs | Send |
@@ -299,7 +361,7 @@ for every login, `requestIdentity({ …, loginLevel: 2 })` for one request, or
 
 ## Bridge (popup)
 
-`GET /identity/bridge?domain=<host[:port]>&min_level=&prompt=&login_level=&expires_in=&nonce=&state=`
+`GET /identity/bridge?domain=<host[:port]>&min_level=&prompt=&login_level=&brand_name=&brand_color=&brand_logo=&brand_background=&brand_text=&brand_font=&brand_google=&expires_in=&nonce=&state=`
 
 Top-level popup so SameSite=Lax cookies apply. Same consent logic as authorize.
 On success, `postMessage` to `window.opener`:
@@ -321,6 +383,10 @@ Codes are the same as the authorize `error=` codes. `@engine9/id` rejects
 message rejects with `access_denied`.
 
 `targetOrigin` is the Domain’s page origin (`return_to` origin). Then the popup closes.
+
+With no `window.opener` (the site's window closed, or the bridge opened in a
+new tab), nothing is posted. The page says the person is signed in and links
+to the Domain's origin.
 
 Without `return_to`, that origin is `https://<domain>` (`http://` for
 `localhost` / `127.0.0.1`). A plain `http:` opener would never receive the

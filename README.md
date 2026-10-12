@@ -442,6 +442,7 @@ Every option is optional.
 | `mode`        | `'popup'`                      | `'redirect'` sends the whole page to delegate and back           |
 | `prompt`      | —                              | `'select'` always shows the chooser                              |
 | `loginLevel`  | `3` (Google only)              | `2` also offers an emailed sign-in link. See [Sign-in screens](#sign-in-screens-google-only-or-google-plus-an-email-link) |
+| `brand`       | your Domain, Delegate blue     | `{ name, color, logo, background, text, font, google }` on delegate's sign-in page and email. See [Branding the sign-in](#branding-the-sign-in) |
 | `root`        | `document`                     | Where to look for `data-e9-*` elements                           |
 | `onError`     | `console.warn`                 | Called when login fails or a redirect returns `error=`           |
 | `storage`     | `'local'`                      | `'session'` forgets on tab close; `'memory'` on page unload      |
@@ -525,6 +526,52 @@ On the wire this is `login_level=2` on `/identity/authorize` and
 Server-side sites using `@engine9/core` pass `loginLevel: 2` to
 `auth.identityUrl()`.
 
+## Branding the sign-in
+
+Delegate's sign-in page and sign-in email lead with your site: "Sign in to
+{name}", your Domain under it, buttons in your color, your logo. Delegate
+appears only in the footer and as "{name} via Delegate" on the email.
+
+```js
+const id = engine9Id.mount({
+  brand: {
+    name: 'The Sirens of Sin',                       // up to 60 characters
+    color: '#7c1d3f',                                // #rgb or #rrggbb
+    logo: 'https://thesirensofsin.com/logo.svg',     // https, on your Domain
+    background: '#120a10',                           // the sign-in page
+    text: '#f6eef2',                                 // readable on background
+    font: 'Playfair Display',                        // or system, sans, serif, rounded, mono
+    google: 'brand',                                 // or 'standard', 'skip'
+  },
+});
+```
+
+That is all there is. Delegate keeps none of it: it rides along on each
+login request, so change it whenever you like. Your Domain is always shown
+next to the name, a logo must be served from your Domain (or a subdomain),
+and anything that breaks a rule is ignored. `background`, `text`, and
+`font` style the sign-in page only; the email keeps its plain look.
+
+| Option | Rule |
+| --- | --- |
+| `background` | `#rgb` or `#rrggbb`. The page, with the card tinted from it. |
+| `text` | `#rgb` or `#rrggbb`. Ignored when it is under 4.5:1 contrast on the background; delegate then picks white or near-black. |
+| `font` | `system`, `sans`, `serif`, `rounded`, `mono`, or a Google Fonts family name (letters, digits, and spaces). Delegate loads the family from Google Fonts and falls back to the system font. |
+| `google` | `standard` (Google's white button, the default), `brand` (your color, "Continue with Google"), or `skip`. |
+
+**The second sign-in button.** After your own Log in button, delegate shows
+its Google button. `google: 'brand'` makes it read as the next step:
+"Continue with Google", in your color. `google: 'skip'` goes straight to
+Google instead, but only on a full-page login (`mode: 'redirect'`) where
+Google is the only choice. A popup login (the default, and `loginWidget()`)
+still shows the button as `brand`: browsers block a window that opens
+without a click.
+
+`loginWidget({ siteName })` uses `siteName` as the name when `brand` is not
+set. On the wire: `brand_name`, `brand_color`, `brand_logo`,
+`brand_background`, `brand_text`, `brand_font`, `brand_google`
+([protocol](./docs/protocol.md#branding)).
+
 ## What a browser-only login can and cannot do
 
 The token is verified in the browser (ES256 signature against delegate's
@@ -562,9 +609,46 @@ same Identity Token, maps it to a `person_id`, and enforces roles with a real
 | You need to see each login step                           | `createEngine9Id({ debug: true })` logs every step to the console with the prefix `[engine9-id]` |
 | Content flashes before hiding                             | Add `hidden` to gated elements in the HTML                                                    |
 | Visitor is logged out after an hour                       | Tokens expire. **Login** → **Log in with Google** renews silently; or call `id.ensureLevel(1)` on a gesture |
+| Visitor came back from Delegate and is still logged out, with no error | The return answered a request this browser does not have (`state_mismatch`): another tab, an older popup, or an email link opened in a different browser. `mount()` and the widget ignore it on purpose. **Login** again; it is silent when they are signed in to Delegate. See [A login that answers another request](#a-login-that-answers-another-request) |
 | Logged in on one page, not another                        | Every page needs the script, `mount()`, and `loginWidget()`. Storage is per Domain, so `www` and non-`www` differ |
 | Login button does not appear                              | `loginWidget()` found no `[data-e9-login-widget]` and went to the end of `<body>`. Add the element, or pass `target` |
 | Works locally, not in production                          | Production Domain not registered, or the page is server-rendered and `mount()` never ran in the browser |
+
+## A login that answers another request
+
+Every login carries a random `state` that the browser keeps until Delegate
+answers. A return whose `state` this browser does not recognize is
+`state_mismatch`. It happens when:
+
+- a visitor opens the sign-in email in a different browser or app (a
+  phone's mail app, an in-app browser) from the one that asked;
+- two tabs started a login, and the older one returns last;
+- a visitor uses Back to return to an old popup or redirect.
+
+**Nothing expired, and nothing is wrong with the account.** Treat it as
+"sign in again". Do not show "your link expired" or "login failed".
+
+- `mount()` and `loginWidget()` already do this: they drop the result,
+  clean the URL, leave the page signed out, and do not call `onError`.
+  The next **Login** is silent when the visitor is still signed in to
+  Delegate.
+- With `handleCallback()` or `requestIdentity()` directly, check for it:
+
+```js
+import { isStateMismatch } from '@engine9/id';
+
+try {
+  await id.handleCallback();
+} catch (err) {
+  if (isStateMismatch(err)) showLoginButton(); // or start the login again on a click
+  else showError(err);
+}
+```
+
+- A server callback that sets its own `state` (a cookie, say) should do the
+  same: on a missing or different `state`, start the login again instead of
+  showing an error, at most once so a browser that drops cookies cannot loop.
+  See `demo-festival`'s `/auth/login` and `/auth/delegate`.
 
 ## Going further
 
@@ -574,11 +658,14 @@ same Identity Token, maps it to a `person_id`, and enforces roles with a real
 the pieces directly when you do not want automatic DOM binding:
 
 ```js
-import { createEngine9Id } from '@engine9/id';
+import { createEngine9Id, isStateMismatch } from '@engine9/id';
 import { bindContent } from '@engine9/id/content';
 
 const id = createEngine9Id({ storage: 'local' });
-await id.handleCallback();
+// state_mismatch means "sign in again", not an error (see above).
+await id.handleCallback().catch((err) => {
+  if (!isStateMismatch(err)) throw err;
+});
 const binding = bindContent(id, { root: document.querySelector('#app') });
 ```
 
@@ -608,13 +695,13 @@ Guides: [with-core](./docs/with-core.md), [declared roles](./docs/declared-roles
 
 ### Full client API
 
-`createEngine9Id({ provider?, delegateUrl?, domain?, storage?, core?, fetchImpl?, loginLevel? })`
+`createEngine9Id({ provider?, delegateUrl?, domain?, storage?, core?, fetchImpl?, loginLevel?, brand? })`
 
 | Method | What it does |
 | ------ | ------------ |
 | `getIdentity()` | Verified, unexpired token payload, or `null` |
 | `getDomainUnid()` | `identity.sub`, else the last stored Domain UNID |
-| `requestIdentity({ minLevel, maxLevel?, fields?, prompt?, loginLevel?, expiresIn?, mode, returnTo?, responseMode? })` | Start login. `popup` opens `/identity/bridge`; `redirect` navigates to `/identity/authorize`. `loginLevel: 2` adds the email sign-in link. `expiresIn` sets Identity Token lifetime in seconds (delegate default 28800 / 8 hours, max 30 days) |
+| `requestIdentity({ minLevel, maxLevel?, fields?, prompt?, loginLevel?, brand?, expiresIn?, mode, returnTo?, responseMode? })` | Start login. `popup` opens `/identity/bridge`; `redirect` navigates to `/identity/authorize`. `loginLevel: 2` adds the email sign-in link. `expiresIn` sets Identity Token lifetime in seconds (delegate default 28800 / 8 hours, max 30 days) |
 | `handleCallback()` | Read `#delegate_token` or `?delegate_token` on return, verify, store, clean the URL |
 | `ensureLevel(n, opts?)` | No-op if already at `n`; otherwise try silently, then interactively |
 | `changeDelegateInfo(opts?)` | "Change your Delegate information": `prompt=select` with the current Grant's fields, so the visitor can pick another email address. Options as `requestIdentity`, all optional (default Level 1, popup) |

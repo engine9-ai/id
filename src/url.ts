@@ -1,3 +1,5 @@
+import type { SignInBrand } from './types';
+
 export function trimSlash(url: string): string {
   return url.replace(/\/+$/, '');
 }
@@ -44,6 +46,8 @@ export interface AuthorizeUrlOptions {
   prompt?: string;
   /** `login_level`: delegate sign-in screen. `2` adds an email sign-in link. */
   loginLevel?: number;
+  /** `brand_name`, `brand_color`, `brand_logo`, `brand_background`, `brand_text`, `brand_font`, `brand_google`. */
+  brand?: SignInBrand;
   /**
    * Identity Token lifetime in seconds (`expires_in`). Delegate defaults to
    * 28800 (8 hours) and clamps at 30 days.
@@ -64,6 +68,7 @@ export interface BridgeUrlOptions {
   optionalFields?: string[] | string;
   prompt?: string;
   loginLevel?: number;
+  brand?: SignInBrand;
   /** Identity Token lifetime in seconds (`expires_in`). */
   expiresIn?: number;
   nonce?: string;
@@ -87,6 +92,17 @@ function setOptional(
   params.set(key, String(value));
 }
 
+function setBrand(params: URLSearchParams, brand?: SignInBrand): void {
+  if (!brand) return;
+  setOptional(params, 'brand_name', brand.name?.trim());
+  setOptional(params, 'brand_color', brand.color?.trim());
+  setOptional(params, 'brand_logo', brand.logo?.trim());
+  setOptional(params, 'brand_background', brand.background?.trim());
+  setOptional(params, 'brand_text', brand.text?.trim());
+  setOptional(params, 'brand_font', brand.font?.trim());
+  setOptional(params, 'brand_google', brand.google);
+}
+
 function fieldsParam(fields?: string[] | string): string | undefined {
   if (!fields) return undefined;
   return Array.isArray(fields) ? fields.join(',') : fields;
@@ -105,6 +121,7 @@ export function authorizeUrl(opts: AuthorizeUrlOptions): string {
   setOptional(url.searchParams, 'optional_fields', fieldsParam(opts.optionalFields));
   setOptional(url.searchParams, 'prompt', opts.prompt);
   setOptional(url.searchParams, 'login_level', opts.loginLevel);
+  setBrand(url.searchParams, opts.brand);
   setOptional(url.searchParams, 'expires_in', opts.expiresIn);
   setOptional(url.searchParams, 'nonce', opts.nonce);
   setOptional(url.searchParams, 'state', opts.state);
@@ -124,6 +141,7 @@ export function bridgeUrl(opts: BridgeUrlOptions): string {
   setOptional(url.searchParams, 'optional_fields', fieldsParam(opts.optionalFields));
   setOptional(url.searchParams, 'prompt', opts.prompt);
   setOptional(url.searchParams, 'login_level', opts.loginLevel);
+  setBrand(url.searchParams, opts.brand);
   setOptional(url.searchParams, 'expires_in', opts.expiresIn);
   setOptional(url.searchParams, 'nonce', opts.nonce);
   setOptional(url.searchParams, 'state', opts.state);

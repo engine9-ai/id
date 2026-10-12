@@ -76,6 +76,14 @@ any other runtime dependency, to the published library.
 - Popup messages: `type === 'delegate-identity'` and `event.origin` must be
   the delegate origin.
 - Clock skew on `exp` / `iat` is 60 seconds.
+- A login result whose `state` this browser does not recognize (another
+  request is pending, or a web store has none pending) is `state_mismatch`
+  (`STATE_MISMATCH`, `isStateMismatch`). It means "sign in again", never
+  "expired": `mount()` and the widget drop it without calling `onError`, and
+  the next login is silent when the visitor is still signed in to Delegate.
+  Memory storage loses `state` on a redirect, so it accepts a callback with
+  nothing pending. Any copy, example, or site code you write must follow the
+  same rule: show Log in, not an error.
 - Default storage keys include `delegate_token` and `delegate_domain_unid`.
 
 ## Before finishing

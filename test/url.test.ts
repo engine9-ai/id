@@ -41,6 +41,50 @@ describe('authorizeUrl', () => {
     expect(new URL(bridgeUrl({ ...base, loginLevel: 2 })).searchParams.get('login_level')).toBe('2');
   });
 
+  it('sends brand_name, brand_color, and brand_logo only when set', () => {
+    const base = {
+      delegateUrl: 'https://delegate.engine9.ai',
+      domain: 'site.example',
+      returnTo: 'https://site.example/callback',
+    };
+    const plain = new URL(authorizeUrl(base)).searchParams;
+    expect(plain.has('brand_name')).toBe(false);
+    expect(plain.has('brand_color')).toBe(false);
+    const brand = { name: ' The Sirens ', color: '#7c3aed', logo: 'https://site.example/logo.svg' };
+    for (const href of [authorizeUrl({ ...base, brand }), bridgeUrl({ ...base, brand })]) {
+      const params = new URL(href).searchParams;
+      expect(params.get('brand_name')).toBe('The Sirens');
+      expect(params.get('brand_color')).toBe('#7c3aed');
+      expect(params.get('brand_logo')).toBe('https://site.example/logo.svg');
+    }
+    const nameOnly = new URL(bridgeUrl({ ...base, brand: { name: 'Sirens' } })).searchParams;
+    expect(nameOnly.get('brand_name')).toBe('Sirens');
+    expect(nameOnly.has('brand_logo')).toBe(false);
+    expect(nameOnly.has('brand_background')).toBe(false);
+    expect(nameOnly.has('brand_google')).toBe(false);
+  });
+
+  it('sends the page background, text, font, and Google button when set', () => {
+    const base = {
+      delegateUrl: 'https://delegate.engine9.ai',
+      domain: 'site.example',
+      returnTo: 'https://site.example/callback',
+    };
+    const brand = {
+      background: '#0d0a1f',
+      text: ' #f1eeff ',
+      font: 'IBM Plex Sans',
+      google: 'skip' as const,
+    };
+    for (const href of [authorizeUrl({ ...base, brand }), bridgeUrl({ ...base, brand })]) {
+      const params = new URL(href).searchParams;
+      expect(params.get('brand_background')).toBe('#0d0a1f');
+      expect(params.get('brand_text')).toBe('#f1eeff');
+      expect(params.get('brand_font')).toBe('IBM Plex Sans');
+      expect(params.get('brand_google')).toBe('skip');
+    }
+  });
+
   it('sends expires_in only when asked', () => {
     const base = {
       delegateUrl: 'https://delegate.engine9.ai',

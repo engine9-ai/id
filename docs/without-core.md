@@ -65,6 +65,8 @@ What it does, step by step, if you build your own controls instead:
 1. Register the consumer Domain with delegate (`ALLOWED_DOMAINS` or the
    `domain` table).
 2. On load, `handleCallback()` in case the user is returning from authorize.
+   A `state_mismatch` rejection (`isStateMismatch(err)`) means the return
+   answered another request: show Log in, not an error.
 3. On a user gesture, `requestIdentity({ minLevel, mode: "popup" })`.
 4. Render UI from `getIdentity()` — Level badge, display name, email.
 5. Optionally evaluate declared roles with `evaluateDeclaredRole` /

@@ -51,6 +51,7 @@
     <script src="../../dist/id.iife.js"></script>
     <script>
       const id = engine9Id.mount({
+        // Not called for state_mismatch: mount() leaves the page signed out instead.
         onError: (err) => {
           console.warn(err);
           document.getElementById('out').textContent = `error: ${err.code || err.message}`;

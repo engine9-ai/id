@@ -11,6 +11,20 @@ export class DelegateIdentityError extends Error {
   }
 }
 
+/**
+ * Error code for a login result that answers a request this browser did not
+ * start, or no longer has: another tab, an older popup or redirect, or an
+ * email link opened in a different browser. Nothing has expired. Treat it
+ * as "sign in again": the next login is silent when the visitor is still
+ * signed in to Delegate.
+ */
+export const STATE_MISMATCH = 'state_mismatch';
+
+/** True for a `state_mismatch` error (see `STATE_MISMATCH`). */
+export function isStateMismatch(error: unknown): boolean {
+  return error instanceof DelegateIdentityError && error.code === STATE_MISMATCH;
+}
+
 const DELEGATE_ERROR_TEXT: Record<string, string> = {
   interaction_required:
     'Delegate needs the User to sign in or choose what to share, and prompt=none does not allow that.',

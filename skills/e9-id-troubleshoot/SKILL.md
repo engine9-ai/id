@@ -2,9 +2,9 @@
 name: e9-id-troubleshoot
 description: >-
   Diagnose @engine9/id and delegate identity failures: popup blocked,
-  interaction_required, invalid_domain, JWKS fetch, SameSite, Bot Fight on
-  localhost, fragment vs query tokens. Use when login redirect fails or
-  identity tokens will not verify.
+  interaction_required, invalid_domain, state_mismatch ("link expired"),
+  JWKS fetch, SameSite, Bot Fight on localhost, fragment vs query tokens.
+  Use when login redirect fails or identity tokens will not verify.
 ---
 
 # Troubleshoot identity
@@ -36,6 +36,19 @@ Retry without `prompt=none` so the chooser or `/login` can run.
 
 Evidence after interaction is still below `min_level` (e.g. asked for 4 but
 the User has no MFA). Lower `min_level` or send them to step-up (Google MFA).
+
+## `state_mismatch` / "my link expired"
+
+The return answered a login this browser did not start or no longer has:
+another tab, an older popup, Back, or an email link opened in a different
+browser or app. Nothing expired. Do not show an expiry or failure message;
+show Log in, which is silent when the visitor is still signed in to
+Delegate. `mount()` and `loginWidget()` already ignore it (no `onError`).
+Custom code checks `isStateMismatch(err)`. Server callbacks with their own
+`state` restart the login once (see demo-festival `/auth/delegate`).
+
+Delegate itself never replays a request in another browser: an email link
+opened elsewhere signs that browser in and offers "Continue to {site}".
 
 ## JWT will not verify
 

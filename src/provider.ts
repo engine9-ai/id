@@ -6,6 +6,7 @@ import type {
   LoginLevel,
   Prompt,
   ResponseMode,
+  SignInBrand,
 } from './types';
 import { DEFAULT_DELEGATE_URL } from './types';
 import {
@@ -29,6 +30,7 @@ export interface BuildAuthorizeOptions {
   optionalFields?: string[];
   prompt?: Prompt;
   loginLevel?: LoginLevel;
+  brand?: SignInBrand;
   /** Identity Token lifetime in seconds (`expires_in`). */
   expiresIn?: number;
   nonce?: string;
@@ -44,6 +46,7 @@ export interface BuildBridgeOptions {
   optionalFields?: string[];
   prompt?: Prompt;
   loginLevel?: LoginLevel;
+  brand?: SignInBrand;
   /** Identity Token lifetime in seconds (`expires_in`). */
   expiresIn?: number;
   nonce?: string;
@@ -117,6 +120,7 @@ export function createDelegateProvider(
         optionalFields: opts.optionalFields,
         prompt: opts.prompt,
         loginLevel: opts.loginLevel,
+        brand: opts.brand,
         expiresIn: opts.expiresIn,
         nonce: opts.nonce,
         state: opts.state,
@@ -136,6 +140,7 @@ export function createDelegateProvider(
         optionalFields: opts.optionalFields,
         prompt: opts.prompt,
         loginLevel: opts.loginLevel,
+        brand: opts.brand,
         expiresIn: opts.expiresIn,
         nonce: opts.nonce,
         state: opts.state,

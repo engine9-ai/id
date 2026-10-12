@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createEngine9Id } from '../src/client';
+import { DelegateIdentityError, isStateMismatch, STATE_MISMATCH } from '../src/errors';
 import { createDelegateProvider } from '../src/provider';
 import { parseDelegateCallback } from '../src/url';
 import {
@@ -74,6 +75,51 @@ describe('handleCallback', () => {
     expect(identity?.fields).toBeUndefined();
     expect(id.level).toBe(0);
     expect(id.isAnonymous).toBe(true);
+  });
+
+  describe('a callback for a request this browser does not have', () => {
+    afterEach(() => sessionStorage.clear());
+
+    async function callbackWith(state: string, pending: string | null) {
+      const keys = await createTestKeys();
+      const token = await signIdentityToken(keys, { sub: `${DOMAIN}:other`, level: 1 });
+      sessionStorage.clear();
+      if (pending) sessionStorage.setItem('delegate_state', pending);
+      setPageUrl(`/back#delegate_token=${token}&state=${state}`);
+      const id = createEngine9Id({
+        delegateUrl: ISSUER,
+        domain: DOMAIN,
+        storage: 'session',
+        fetchImpl: mockDelegateFetch(keys.jwk),
+      });
+      const result = await id.handleCallback().then(
+        () => null,
+        (error: unknown) => error,
+      );
+      return { id, error: result };
+    }
+
+    it('is state_mismatch when another request is pending', async () => {
+      const { id, error } = await callbackWith('older', 'newer');
+      expect(isStateMismatch(error)).toBe(true);
+      expect((error as DelegateIdentityError).code).toBe(STATE_MISMATCH);
+      expect(id.getIdentity()).toBeNull();
+      expect(sessionStorage.getItem('delegate_state')).toBe('newer');
+      expect(location.hash).not.toContain('delegate_token');
+    });
+
+    it('is state_mismatch when nothing is pending (another browser asked)', async () => {
+      const { id, error } = await callbackWith('from-elsewhere', null);
+      expect(isStateMismatch(error)).toBe(true);
+      expect(id.getIdentity()).toBeNull();
+    });
+
+    it('still accepts the matching request', async () => {
+      const { id, error } = await callbackWith('mine', 'mine');
+      expect(error).toBeNull();
+      expect(id.getIdentity()?.sub).toBe(`${DOMAIN}:other`);
+      expect(sessionStorage.getItem('delegate_state')).toBeNull();
+    });
   });
 });
 
