@@ -193,8 +193,9 @@ Query:
   signed-out browser sees. `3` offers Google only; `2` adds an email sign-in
   link. Ignored (treated as `3`) when `min_level` is 3 or more. See
   [Sign-in screen](#sign-in-screen-login_level).
-- `brand_name`, `brand_color`, `brand_logo`, `brand_background`,
-  `brand_text`, `brand_font`, `brand_google` — optional sign-in branding.
+- `brand_name`, `brand_color`, `brand_logo`, `brand_wordmark`,
+  `brand_background`, `brand_text`, `brand_card`, `brand_card_text`,
+  `brand_font`, `brand_google` — optional sign-in branding.
   See [Branding](#branding).
 - `nonce`, `state` — opaque client values
 - `response_mode` — `fragment` (default) or `query`
@@ -318,8 +319,11 @@ only. Delegate's name stays in the footer and the email sender.
 | `brand_name` | Display name, 1–60 characters, no `://` or `www.`. The Domain is always shown under it. Default: the Domain. |
 | `brand_color` | `#rgb` or `#rrggbb`, for buttons and the monogram. Delegate picks white or near-black text on it. Default `#1a73e8`. |
 | `brand_logo` | `https` image URL on the Domain's host or one of its subdomains (any scheme on `localhost`), up to 512 characters. Shown about 48px tall. Default: a monogram of the name's first letter. |
-| `brand_background` | `#rgb` or `#rrggbb` for the page; the card is tinted from it. Default: Delegate's light gray page and white card. |
+| `brand_wordmark` | A wide logo, same URL rule as `brand_logo`. Shown at the top of the card up to 240px wide and 120px tall, in place of the logo or monogram. Sign-in page only; the email keeps `brand_logo`. |
+| `brand_background` | `#rgb` or `#rrggbb` for the page; the card is tinted from it unless `brand_card` is set. Default: Delegate's light gray page and white card. |
 | `brand_text` | `#rgb` or `#rrggbb` for text on the background (on the white card when there is no `brand_background`). Ignored below 4.5:1 contrast. Default with a background: white or near-black, whichever reads. |
+| `brand_card` | `#rgb` or `#rrggbb` for the card, in place of the tint, so it can contrast with the page. |
+| `brand_card_text` | `#rgb` or `#rrggbb` for text on `brand_card`. Ignored below 4.5:1 contrast, and ignored without `brand_card`. Default: `brand_text` when it reaches 4.5:1 on the card, else white or near-black, whichever reads. |
 | `brand_font` | `system`, `sans`, `serif`, `rounded`, `mono`, or a Google Fonts family name: letters, digits, and spaces, up to 40 characters (`IBM Plex Sans`). A family loads from `fonts.googleapis.com` at weights 400, 600, and 700, with the system font as fallback. Default `system`. |
 | `brand_google` | `standard`, `brand`, or `skip`. See below. Default `standard`. |
 
@@ -341,8 +345,8 @@ only. Delegate's name stays in the footer and the email sender.
 Values that break a rule are ignored. A Domain that does not pass the
 allow rule gets Delegate's own look.
 
-`@engine9/id`: `createEngine9Id({ brand: { name, color, logo, background,
-text, font, google } })`, or `requestIdentity({ …, brand })` for one
+`@engine9/id`: `createEngine9Id({ brand: { name, color, logo, wordmark,
+background, text, card, cardText, font, google } })`, or `requestIdentity({ …, brand })` for one
 request. `@engine9/core`: `auth.identityUrl({ …, brand })`.
 
 Typical choices:
@@ -361,7 +365,7 @@ for every login, `requestIdentity({ …, loginLevel: 2 })` for one request, or
 
 ## Bridge (popup)
 
-`GET /identity/bridge?domain=<host[:port]>&min_level=&prompt=&login_level=&brand_name=&brand_color=&brand_logo=&brand_background=&brand_text=&brand_font=&brand_google=&expires_in=&nonce=&state=`
+`GET /identity/bridge?domain=<host[:port]>&min_level=&prompt=&login_level=&brand_name=&brand_color=&brand_logo=&brand_wordmark=&brand_background=&brand_text=&brand_card=&brand_card_text=&brand_font=&brand_google=&expires_in=&nonce=&state=`
 
 Top-level popup so SameSite=Lax cookies apply. Same consent logic as authorize.
 On success, `postMessage` to `window.opener`:

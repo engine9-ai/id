@@ -442,7 +442,7 @@ Every option is optional.
 | `mode`        | `'popup'`                      | `'redirect'` sends the whole page to delegate and back           |
 | `prompt`      | —                              | `'select'` always shows the chooser                              |
 | `loginLevel`  | `3` (Google only)              | `2` also offers an emailed sign-in link. See [Sign-in screens](#sign-in-screens-google-only-or-google-plus-an-email-link) |
-| `brand`       | your Domain, Delegate blue     | `{ name, color, logo, background, text, font, google }` on delegate's sign-in page and email. See [Branding the sign-in](#branding-the-sign-in) |
+| `brand`       | your Domain, Delegate blue     | `{ name, color, logo, wordmark, background, text, card, cardText, font, google }` on delegate's sign-in page and email. See [Branding the sign-in](#branding-the-sign-in) |
 | `root`        | `document`                     | Where to look for `data-e9-*` elements                           |
 | `onError`     | `console.warn`                 | Called when login fails or a redirect returns `error=`           |
 | `storage`     | `'local'`                      | `'session'` forgets on tab close; `'memory'` on page unload      |
@@ -538,8 +538,11 @@ const id = engine9Id.mount({
     name: 'The Sirens of Sin',                       // up to 60 characters
     color: '#7c1d3f',                                // #rgb or #rrggbb
     logo: 'https://thesirensofsin.com/logo.svg',     // https, on your Domain
-    background: '#120a10',                           // the sign-in page
-    text: '#f6eef2',                                 // readable on background
+    wordmark: 'https://thesirensofsin.com/wordmark.svg', // wide logo, sign-in page only
+    background: '#f6eef2',                           // the sign-in page
+    text: '#120a10',                                 // readable on background
+    card: '#4a1942',                                 // the card, instead of a tint of background
+    cardText: '#f6eef2',                             // readable on card
     font: 'Playfair Display',                        // or system, sans, serif, rounded, mono
     google: 'brand',                                 // or 'standard', 'skip'
   },
@@ -548,14 +551,18 @@ const id = engine9Id.mount({
 
 That is all there is. Delegate keeps none of it: it rides along on each
 login request, so change it whenever you like. Your Domain is always shown
-next to the name, a logo must be served from your Domain (or a subdomain),
-and anything that breaks a rule is ignored. `background`, `text`, and
-`font` style the sign-in page only; the email keeps its plain look.
+next to the name, a logo or wordmark must be served from your Domain (or a
+subdomain), and anything that breaks a rule is ignored. `wordmark`,
+`background`, `text`, `card`, `cardText`, and `font` style the sign-in page
+only; the email keeps its plain look.
 
 | Option | Rule |
 | --- | --- |
-| `background` | `#rgb` or `#rrggbb`. The page, with the card tinted from it. |
+| `wordmark` | A wide logo, same rule as `logo`. Shown at the top of the card up to 240px wide and 120px tall, in place of `logo`. |
+| `background` | `#rgb` or `#rrggbb`. The page, with the card tinted from it unless `card` is set. |
 | `text` | `#rgb` or `#rrggbb`. Ignored when it is under 4.5:1 contrast on the background; delegate then picks white or near-black. |
+| `card` | `#rgb` or `#rrggbb`. The card, so it can contrast with the page (a plum card on a light page, or the reverse). |
+| `cardText` | `#rgb` or `#rrggbb`. Text on `card`. Ignored under 4.5:1 contrast; delegate then uses `text` if that reads on the card, else white or near-black. Ignored without `card`. |
 | `font` | `system`, `sans`, `serif`, `rounded`, `mono`, or a Google Fonts family name (letters, digits, and spaces). Delegate loads the family from Google Fonts and falls back to the system font. |
 | `google` | `standard` (Google's white button, the default), `brand` (your color, "Continue with Google"), or `skip`. |
 
@@ -569,7 +576,8 @@ without a click.
 
 `loginWidget({ siteName })` uses `siteName` as the name when `brand` is not
 set. On the wire: `brand_name`, `brand_color`, `brand_logo`,
-`brand_background`, `brand_text`, `brand_font`, `brand_google`
+`brand_wordmark`, `brand_background`, `brand_text`, `brand_card`,
+`brand_card_text`, `brand_font`, `brand_google`
 ([protocol](./docs/protocol.md#branding)).
 
 ## What a browser-only login can and cannot do

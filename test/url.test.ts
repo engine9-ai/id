@@ -82,6 +82,26 @@ describe('authorizeUrl', () => {
       expect(params.get('brand_text')).toBe('#f1eeff');
       expect(params.get('brand_font')).toBe('IBM Plex Sans');
       expect(params.get('brand_google')).toBe('skip');
+      expect(params.has('brand_card')).toBe(false);
+    }
+  });
+
+  it('sends the card, its text, and a wordmark when set', () => {
+    const base = {
+      delegateUrl: 'https://delegate.engine9.ai',
+      domain: 'site.example',
+      returnTo: 'https://site.example/callback',
+    };
+    const brand = {
+      wordmark: 'https://site.example/wordmark.svg',
+      card: '#4a1942',
+      cardText: ' #f7e9f3 ',
+    };
+    for (const href of [authorizeUrl({ ...base, brand }), bridgeUrl({ ...base, brand })]) {
+      const params = new URL(href).searchParams;
+      expect(params.get('brand_wordmark')).toBe('https://site.example/wordmark.svg');
+      expect(params.get('brand_card')).toBe('#4a1942');
+      expect(params.get('brand_card_text')).toBe('#f7e9f3');
     }
   });
 

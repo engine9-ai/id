@@ -88,9 +88,10 @@ export type SignInGoogleButton = 'standard' | 'brand' | 'skip';
 
 /**
  * How Delegate's sign-in page and email present this site. Sent on each
- * request (`brand_name`, `brand_color`, `brand_logo`, `brand_background`,
- * `brand_text`, `brand_font`, `brand_google`); Delegate stores none of it
- * and always shows the Domain next to the name. Invalid values are ignored.
+ * request (`brand_name`, `brand_color`, `brand_logo`, `brand_wordmark`,
+ * `brand_background`, `brand_text`, `brand_card`, `brand_card_text`,
+ * `brand_font`, `brand_google`); Delegate stores none of it and always shows
+ * the Domain next to the name. Invalid values are ignored.
  */
 export interface SignInBrand {
   /** Display name, up to 60 characters. Default: the Domain. */
@@ -99,10 +100,16 @@ export interface SignInBrand {
   color?: string;
   /** `https` image on this Domain or a subdomain of it, shown about 48px tall. */
   logo?: string;
+  /** Wide logo, same rule as `logo`, up to 240px wide on the sign-in page in place of `logo`. */
+  wordmark?: string;
   /** `#rgb` or `#rrggbb` for the sign-in page (not the email). */
   background?: string;
   /** `#rgb` or `#rrggbb` text on `background`. Ignored below 4.5:1 contrast. */
   text?: string;
+  /** `#rgb` or `#rrggbb` for the card, in place of a tint of `background`. */
+  card?: string;
+  /** `#rgb` or `#rrggbb` text on `card`. Ignored below 4.5:1 contrast. */
+  cardText?: string;
   /** `system`, `sans`, `serif`, `rounded`, `mono`, or a Google Fonts family (`IBM Plex Sans`). */
   font?: string;
   google?: SignInGoogleButton;

@@ -46,7 +46,7 @@ export interface AuthorizeUrlOptions {
   prompt?: string;
   /** `login_level`: delegate sign-in screen. `2` adds an email sign-in link. */
   loginLevel?: number;
-  /** `brand_name`, `brand_color`, `brand_logo`, `brand_background`, `brand_text`, `brand_font`, `brand_google`. */
+  /** `brand_name`, `brand_color`, `brand_logo`, `brand_wordmark`, `brand_background`, `brand_text`, `brand_card`, `brand_card_text`, `brand_font`, `brand_google`. */
   brand?: SignInBrand;
   /**
    * Identity Token lifetime in seconds (`expires_in`). Delegate defaults to
@@ -97,8 +97,11 @@ function setBrand(params: URLSearchParams, brand?: SignInBrand): void {
   setOptional(params, 'brand_name', brand.name?.trim());
   setOptional(params, 'brand_color', brand.color?.trim());
   setOptional(params, 'brand_logo', brand.logo?.trim());
+  setOptional(params, 'brand_wordmark', brand.wordmark?.trim());
   setOptional(params, 'brand_background', brand.background?.trim());
   setOptional(params, 'brand_text', brand.text?.trim());
+  setOptional(params, 'brand_card', brand.card?.trim());
+  setOptional(params, 'brand_card_text', brand.cardText?.trim());
   setOptional(params, 'brand_font', brand.font?.trim());
   setOptional(params, 'brand_google', brand.google);
 }
