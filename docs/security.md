@@ -20,10 +20,15 @@ facts (`person_id`, Roles) after mapping the Domain UNID (`sub`).
 
 - **Token in server logs.** Default `response_mode=fragment` puts
   `delegate_token` in the URL hash. Use `query` only for server callbacks
-  (demo `/auth/delegate`) and do not log the full query string.
+  (demo `/auth/delegate`) and do not log the full query string. Delegate
+  issues `query` tokens for 5 minutes unless `expires_in` asks otherwise.
 - **Popup spoofing.** Accept `postMessage` only from the delegate origin;
   type must be `delegate-identity`; verify the JWT before storing.
 - **CSRF / mix-up.** Send `state` and `nonce`; echo-check on callback.
+  `@engine9/id` does this in the browser. A server callback keeps them in a
+  short-lived HttpOnly cookie and checks both (`@engine9/core`
+  `beginLogin()` / `finishLogin()`); without that, anyone who opens another
+  person's return link signs in as them.
 - **JWKS swap.** Fetch JWKS from the discovered `jwks_uri` on the same
   issuer; cache by `kid`; pin `iss`.
 - **Clock skew.** 60 second leeway on `exp` / `iat`.

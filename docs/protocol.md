@@ -109,7 +109,7 @@ Claims:
 | `iss` | Issuer, e.g. `https://delegate.engine9.ai` |
 | `sub` | Domain UNID: `aud ":" hex` (formula below). Every token, every Level |
 | `aud` | Domain (`host` or `host:port`; product term is Domain). Also the HMAC namespace |
-| `iat`, `exp` | Unix seconds. Default TTL 28800s (8 hours); Domains may request longer via `expires_in` (max 30 days) |
+| `iat`, `exp` | Unix seconds. Default TTL 28800s (8 hours), or 300s (5 minutes) with `response_mode=query`; Domains may request another lifetime via `expires_in` (max 30 days) |
 | `jti` | Unique token id |
 | `nonce` | Echo of client nonce when supplied |
 | `merged_from` | Optional. An earlier Domain UNID for the same person (see [UNID merge](#unid-merge)) |
@@ -199,8 +199,10 @@ Query:
   See [Branding](#branding).
 - `nonce`, `state` — opaque client values
 - `response_mode` — `fragment` (default) or `query`
-- `expires_in` — Identity Token lifetime in seconds (default `28800`, 8 hours).
-  Values above `2592000` (30 days) are clamped to that max. Missing,
+- `expires_in` — Identity Token lifetime in seconds. Default `28800`
+  (8 hours), or `300` (5 minutes) with `response_mode=query`, where the
+  token rides in the return URL and the server it reaches exchanges it at
+  once. Values above `2592000` (30 days) are clamped to that max. Missing,
   empty, zero, negative, or non-numeric values use the default.
 
 Rules:
@@ -242,7 +244,12 @@ Success:
 - Default: `return_to#delegate_token=<jwt>&state=<state>` (fragment so the
   token does not appear in server access logs).
 - `response_mode=query`: `return_to?delegate_token=<jwt>&state=<state>`
-  (server-side callbacks such as demo `/auth/delegate`).
+  (server-side callbacks such as demo `/auth/delegate`). The URL reaches
+  server logs, history, and `Referer`, so the default lifetime is 5 minutes.
+  A server callback binds the return to the browser that started it: keep
+  `state` and `nonce` in a short-lived HttpOnly cookie, sign nobody in
+  unless the returned `state` matches it, and pass the `nonce` to the token
+  check. `@engine9/core`'s `beginLogin()` / `finishLogin()` do this.
 
 Error: `return_to?error=<code>&state=<state>`
 
@@ -488,8 +495,9 @@ interaction, `level_unavailable`.
 - Browser (`@engine9/id`): verify ES256 via JWKS, `iss`, `aud` = own Domain,
   `exp` (±60s skew), `nonce`. Safe for personalization and step-up. Cannot
   learn `person_id` or Roles.
-- Core Site: same JWT verification (no shared secret). Maps `sub` (and
-  `merged_from`, when present) → `person_id`, loads Roles gated by `level`,
-  optionally mints a Core Session.
+- Core Site: same JWT verification (no shared secret), plus `nonce` when
+  the server started the sign-in. Maps `sub` (and `merged_from`, when
+  present) → `person_id`, loads Roles gated by `level`, optionally mints a
+  Core Session.
 - Delegate: verifies Firebase ID tokens; assigns Levels; stores User fields and
   Grants; signs Identity Tokens.
