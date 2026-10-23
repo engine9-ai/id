@@ -538,15 +538,15 @@ Every option is optional.
 The token's `iss` is checked against the one `delegateUrl` you configured.
 Leave `delegateUrl` unset to use the default, `https://delegate.network`.
 
-<!-- REMOVE-AFTER 2026-10-30: delegate.engine9.ai retirement notice. Delete this block one week after the old host is retired. -->
+<!-- REMOVE-AFTER 2026-11-06: delegate.engine9.ai retirement notice. Delete this block one week after the old host is retired on 2026-10-30. -->
 > **Moving to `delegate.network`.** `https://delegate.engine9.ai` is being
-> retired and will stop working no later than 2026-10-23. If your page or
+> retired and will stop working on 2026-10-30. If your page or
 > server sets `delegateUrl` (or an issuer, a CSP entry, or a link) to the old
 > host, change it to `https://delegate.network`, or delete `delegateUrl` to
 > use the default. Update `id.iife.js` to 1.13.0 and change any server that
 > verifies the token in the same deploy. The exact list of places is in
 > [CHANGELOG.md](CHANGELOG.md#1130-delegate-moves-to-delegatenetwork).
-<!-- END REMOVE-AFTER 2026-10-30 -->
+<!-- END REMOVE-AFTER 2026-11-06 -->
 
 Popup mode falls back to a full-page redirect when the browser blocks the
 popup. Either way `mount()` picks up the token on return and cleans the URL.

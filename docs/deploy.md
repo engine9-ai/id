@@ -94,13 +94,13 @@ both calls) if you are not using `https://delegate.network`. Another
 provider is possible later; it must return the same identity shape. See
 [without-core.md](./without-core.md).
 
-<!-- REMOVE-AFTER 2026-10-30: delegate.engine9.ai retirement notice. Delete this block one week after the old host is retired. -->
+<!-- REMOVE-AFTER 2026-11-06: delegate.engine9.ai retirement notice. Delete this block one week after the old host is retired on 2026-10-30. -->
 > **Moving to `delegate.network`.** `https://delegate.engine9.ai` is being
-> retired and will stop working no later than 2026-10-23. If you set
+> retired and will stop working on 2026-10-30. If you set
 > `delegateUrl` to it, change it to `https://delegate.network` or delete it,
 > and use `@engine9/id` 1.13.0. See
 > [CHANGELOG.md](../CHANGELOG.md#1130-delegate-moves-to-delegatenetwork).
-<!-- END REMOVE-AFTER 2026-10-30 -->
+<!-- END REMOVE-AFTER 2026-11-06 -->
 
 ## Step 2 — Configure the widget
 

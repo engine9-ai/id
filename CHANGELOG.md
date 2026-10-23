@@ -4,17 +4,23 @@ This file lists what changed in each release, what was retired, and what a
 site should change. The current way to do things is in [README.md](README.md).
 
 Only releases from the last week are listed. Pin the version you install
-(`@engine9/id@1.13.0`); a copy of `id.iife.js` you saved earlier is the
+(`@engine9/id@1.13.1`); a copy of `id.iife.js` you saved earlier is the
 version it was saved from.
+
+## 1.13.1: Retirement date
+
+Documentation only; no code change. 1.13.0 said `delegate.engine9.ai` would
+stop working "no later than 2026-10-23". That date was wrong. The old host is
+retired on **2026-10-30**. Everything in 1.13.0 below still applies.
 
 ## 1.13.0: Delegate moves to delegate.network
 
-<!-- REMOVE-AFTER 2026-10-30: the retirement notice and the migration table below.
-     One week after delegate.engine9.ai is retired, delete everything from here
+<!-- REMOVE-AFTER 2026-11-06: the retirement notice and the migration table below.
+     One week after delegate.engine9.ai is retired (2026-10-30), delete everything from here
      to the matching "END REMOVE-AFTER" comment, and keep the "What changed" list. -->
 
-> **`https://delegate.engine9.ai` is being retired. It will stop working no
-> later than 2026-10-23. Move every site to `https://delegate.network` now.**
+> **`https://delegate.engine9.ai` is being retired. It will stop working on
+> 2026-10-30. Move every site to `https://delegate.network` now.**
 
 ### What to change in your site
 
@@ -56,7 +62,7 @@ have their Delegate session and the token saved in the browser
 (`delegate_token`) names the old issuer and is dropped. Delegate recognizes the
 same account, so it is the same User and the same Domain UNID.
 
-<!-- END REMOVE-AFTER 2026-10-30 -->
+<!-- END REMOVE-AFTER 2026-11-06 -->
 
 ### What changed
 
