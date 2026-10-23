@@ -2,7 +2,7 @@ import { exportJWK, generateKeyPair, SignJWT, type GenerateKeyPairResult } from 
 
 import type { FetchImpl, Jwk } from '../src/types';
 
-export const ISSUER = 'https://delegate.engine9.ai';
+export const ISSUER = 'https://delegate.network';
 export const DOMAIN = 'site.example';
 
 export interface TestKeys {

@@ -143,7 +143,7 @@ describe('changeDelegateInfo', () => {
         shared: ['display_name', 'email'],
       },
     });
-    setPageUrl(`/troupe#delegate_token=${token}`);
+    setPageUrl(`/members#delegate_token=${token}`);
     const base = createDelegateProvider({
       delegateUrl: ISSUER,
       fetchImpl: mockDelegateFetch(keys.jwk),

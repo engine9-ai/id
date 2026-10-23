@@ -87,7 +87,7 @@ export interface IdentityProvider {
 }
 
 export interface DelegateProviderOptions {
-  /** Delegate origin. Default https://delegate.engine9.ai */
+  /** Delegate origin. Default https://delegate.network */
   delegateUrl?: string;
   fetchImpl?: FetchImpl;
 }

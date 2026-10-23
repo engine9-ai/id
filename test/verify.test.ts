@@ -1,6 +1,7 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
 
+import { DEFAULT_DELEGATE_URL } from '../src/types';
 import { verifyIdentityToken } from '../src/verify';
 import {
   createTestKeys,
@@ -96,5 +97,40 @@ describe('verifyIdentityToken', () => {
         nonce: 'xyz',
       }),
     ).rejects.toThrow(/nonce/i);
+  });
+
+  it('defaults to the delegate.network Delegate URL', () => {
+    expect(DEFAULT_DELEGATE_URL).toBe('https://delegate.network');
+  });
+
+  // The old Delegate host still works. It signs with its own host as `iss`, and
+  // a site that configured that host verifies against it (no either-issuer).
+  describe('old Delegate host', () => {
+    const OLD_HOST = 'https://delegate.engine9.ai';
+
+    it('verifies a token issued by the old host when the site configured it', async () => {
+      const keys = await createTestKeys();
+      const token = await signIdentityToken(keys, {}, { iss: OLD_HOST });
+      const identity = await verifyIdentityToken({
+        token,
+        jwks: { keys: [keys.jwk] },
+        domain: DOMAIN,
+        issuer: OLD_HOST,
+      });
+      expect(identity.iss).toBe(OLD_HOST);
+    });
+
+    it('does not accept an old-host token for a site configured with the default', async () => {
+      const keys = await createTestKeys();
+      const token = await signIdentityToken(keys, {}, { iss: OLD_HOST });
+      await expect(
+        verifyIdentityToken({
+          token,
+          jwks: { keys: [keys.jwk] },
+          domain: DOMAIN,
+          issuer: DEFAULT_DELEGATE_URL,
+        }),
+      ).rejects.toThrow(/iss/i);
+    });
   });
 });

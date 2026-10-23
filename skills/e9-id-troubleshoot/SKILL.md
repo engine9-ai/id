@@ -60,7 +60,7 @@ opened elsewhere signs that browser in and offers "Continue to {site}".
 
 ## SameSite / `/profile` fetch
 
-`credentials: "include"` to `delegate.engine9.ai` from another origin will
+`credentials: "include"` to `delegate.network` from another origin will
 **not** send Lax cookies. Use `/identity/bridge` (or deprecated
 `/profile/bridge`) in a top-level popup.
 

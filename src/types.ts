@@ -1,4 +1,4 @@
-export const DEFAULT_DELEGATE_URL = 'https://delegate.engine9.ai';
+export const DEFAULT_DELEGATE_URL = 'https://delegate.network';
 
 export type StorageKind = 'session' | 'local' | 'memory';
 
@@ -179,7 +179,7 @@ export interface Engine9IdConfig {
    * Custom providers must return the normalized Identity shape.
    */
   provider?: Engine9IdProvider;
-  /** Delegate origin shortcut when using the default provider. Default `https://delegate.engine9.ai`. */
+  /** Delegate origin shortcut when using the default provider. Default `https://delegate.network`. */
   delegateUrl?: string;
   /** This consumer domain (`host` or `host:port`). Default from `location`. JWT `aud` must match. */
   domain?: string;

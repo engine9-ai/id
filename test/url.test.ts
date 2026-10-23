@@ -22,7 +22,7 @@ describe('domainFromUrl', () => {
 describe('authorizeUrl', () => {
   it('uses domain query param', () => {
     const url = authorizeUrl({
-      delegateUrl: 'https://delegate.engine9.ai',
+      delegateUrl: 'https://delegate.network',
       domain: 'site.example',
       returnTo: 'https://site.example/callback',
     });
@@ -32,7 +32,7 @@ describe('authorizeUrl', () => {
 
   it('sends login_level only when asked', () => {
     const base = {
-      delegateUrl: 'https://delegate.engine9.ai',
+      delegateUrl: 'https://delegate.network',
       domain: 'site.example',
       returnTo: 'https://site.example/callback',
     };
@@ -43,7 +43,7 @@ describe('authorizeUrl', () => {
 
   it('sends login_providers only when asked, as a comma list', () => {
     const base = {
-      delegateUrl: 'https://delegate.engine9.ai',
+      delegateUrl: 'https://delegate.network',
       domain: 'site.example',
       returnTo: 'https://site.example/callback',
     };
@@ -66,22 +66,22 @@ describe('authorizeUrl', () => {
 
   it('sends brand_name, brand_color, and brand_logo only when set', () => {
     const base = {
-      delegateUrl: 'https://delegate.engine9.ai',
+      delegateUrl: 'https://delegate.network',
       domain: 'site.example',
       returnTo: 'https://site.example/callback',
     };
     const plain = new URL(authorizeUrl(base)).searchParams;
     expect(plain.has('brand_name')).toBe(false);
     expect(plain.has('brand_color')).toBe(false);
-    const brand = { name: ' The Sirens ', color: '#7c3aed', logo: 'https://site.example/logo.svg' };
+    const brand = { name: ' The Festival ', color: '#7c3aed', logo: 'https://site.example/logo.svg' };
     for (const href of [authorizeUrl({ ...base, brand }), bridgeUrl({ ...base, brand })]) {
       const params = new URL(href).searchParams;
-      expect(params.get('brand_name')).toBe('The Sirens');
+      expect(params.get('brand_name')).toBe('The Festival');
       expect(params.get('brand_color')).toBe('#7c3aed');
       expect(params.get('brand_logo')).toBe('https://site.example/logo.svg');
     }
-    const nameOnly = new URL(bridgeUrl({ ...base, brand: { name: 'Sirens' } })).searchParams;
-    expect(nameOnly.get('brand_name')).toBe('Sirens');
+    const nameOnly = new URL(bridgeUrl({ ...base, brand: { name: 'Festival' } })).searchParams;
+    expect(nameOnly.get('brand_name')).toBe('Festival');
     expect(nameOnly.has('brand_logo')).toBe(false);
     expect(nameOnly.has('brand_background')).toBe(false);
     expect(nameOnly.has('brand_google')).toBe(false);
@@ -89,7 +89,7 @@ describe('authorizeUrl', () => {
 
   it('sends the page background, text, font, and Google button when set', () => {
     const base = {
-      delegateUrl: 'https://delegate.engine9.ai',
+      delegateUrl: 'https://delegate.network',
       domain: 'site.example',
       returnTo: 'https://site.example/callback',
     };
@@ -111,7 +111,7 @@ describe('authorizeUrl', () => {
 
   it('sends the card, its text, and a wordmark when set', () => {
     const base = {
-      delegateUrl: 'https://delegate.engine9.ai',
+      delegateUrl: 'https://delegate.network',
       domain: 'site.example',
       returnTo: 'https://site.example/callback',
     };
@@ -130,7 +130,7 @@ describe('authorizeUrl', () => {
 
   it('sends expires_in only when asked', () => {
     const base = {
-      delegateUrl: 'https://delegate.engine9.ai',
+      delegateUrl: 'https://delegate.network',
       domain: 'site.example',
       returnTo: 'https://site.example/callback',
     };

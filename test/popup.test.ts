@@ -13,18 +13,18 @@ describe('openLogoutPopup', () => {
     const popup = { closed: false, close: vi.fn() } as unknown as Window;
     vi.spyOn(window, 'open').mockReturnValue(popup);
     const pending = openLogoutPopup({
-      url: 'https://delegate.engine9.ai/identity/logout/bridge?domain=site.example',
-      expectedOrigin: 'https://delegate.engine9.ai',
+      url: 'https://delegate.network/identity/logout/bridge?domain=site.example',
+      expectedOrigin: 'https://delegate.network',
     });
     postMessage('https://evil.example', { type: 'delegate-logout' });
-    postMessage('https://delegate.engine9.ai', { type: 'delegate-logout', loggedOut: true });
+    postMessage('https://delegate.network', { type: 'delegate-logout', loggedOut: true });
     await expect(pending).resolves.toBe('loggedOut');
   });
 
   it('returns null when the popup is blocked', async () => {
     vi.spyOn(window, 'open').mockReturnValue(null);
     await expect(
-      openLogoutPopup({ url: 'https://delegate.engine9.ai/x', expectedOrigin: 'https://delegate.engine9.ai' }),
+      openLogoutPopup({ url: 'https://delegate.network/x', expectedOrigin: 'https://delegate.network' }),
     ).resolves.toBeNull();
   });
 });
@@ -39,14 +39,14 @@ describe('logout', () => {
     const pending = id.logout({ delegate: true, mode: 'popup' });
     expect(seen).toEqual([null]);
     expect(String(open.mock.calls[0][0])).toBe(
-      'https://delegate.engine9.ai/identity/logout/bridge?domain=site.example',
+      'https://delegate.network/identity/logout/bridge?domain=site.example',
     );
-    postMessage('https://delegate.engine9.ai', { type: 'delegate-logout', loggedOut: true });
+    postMessage('https://delegate.network', { type: 'delegate-logout', loggedOut: true });
     await expect(pending).resolves.toBeUndefined();
   });
 });
 
-const DELEGATE = 'https://delegate.engine9.ai';
+const DELEGATE = 'https://delegate.network';
 
 describe('listenForDelegateIdentity', () => {
   it('ignores messages from the wrong origin', async () => {

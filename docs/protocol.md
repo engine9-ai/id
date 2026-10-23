@@ -54,15 +54,18 @@ product language in docs and APIs (except the JWT claim `aud`, which is RFC 7519
 
 `GET /.well-known/delegate-configuration`
 
+`issuer` is the origin of the Delegate that answered. `https://delegate.network`
+is the default.
+
 ```json
 {
-  "issuer": "https://delegate.engine9.ai",
-  "jwks_uri": "https://delegate.engine9.ai/.well-known/jwks.json",
-  "identity_authorize_endpoint": "https://delegate.engine9.ai/identity/authorize",
-  "identity_bridge_endpoint": "https://delegate.engine9.ai/identity/bridge",
-  "logout_endpoint": "https://delegate.engine9.ai/identity/logout",
-  "logout_bridge_endpoint": "https://delegate.engine9.ai/identity/logout/bridge",
-  "fields_endpoint": "https://delegate.engine9.ai/user/fields",
+  "issuer": "https://delegate.network",
+  "jwks_uri": "https://delegate.network/.well-known/jwks.json",
+  "identity_authorize_endpoint": "https://delegate.network/identity/authorize",
+  "identity_bridge_endpoint": "https://delegate.network/identity/bridge",
+  "logout_endpoint": "https://delegate.network/identity/logout",
+  "logout_bridge_endpoint": "https://delegate.network/identity/logout/bridge",
+  "fields_endpoint": "https://delegate.network/user/fields",
   "levels_supported": [0, 1, 2, 3, 4],
   "token_signing_alg_values_supported": ["ES256"]
 }
@@ -106,7 +109,7 @@ Claims:
 
 | Claim | Meaning |
 | ----- | ------- |
-| `iss` | Issuer, e.g. `https://delegate.engine9.ai` |
+| `iss` | Issuer: the Delegate origin that signed the token, e.g. `https://delegate.network`. Verify against the one Delegate URL you configured; do not accept more than one issuer |
 | `sub` | Domain UNID: `aud ":" hex` (formula below). Every token, every Level |
 | `aud` | Domain (`host` or `host:port`; product term is Domain). Also the HMAC namespace |
 | `iat`, `exp` | Unix seconds. Default TTL 28800s (8 hours), or 300s (5 minutes) with `response_mode=query`; Domains may request another lifetime via `expires_in` (max 30 days) |

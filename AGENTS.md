@@ -89,3 +89,16 @@ any other runtime dependency, to the published library.
 ## Before finishing
 
 Run `npm test` and `npm run typecheck`. Do not git commit unless asked.
+
+## Documentation: README versus release notes
+
+[README.md](README.md) and `docs/` describe the current best practice only.
+Write them as if nothing used to be different. What changed, what was
+retired, and what a site must change at each release goes in
+[CHANGELOG.md](CHANGELOG.md). Every version bump adds a section there with a
+"what a site changes" table naming the option, variable, or code to change.
+
+A temporary notice (a retired host, a deprecation window) is allowed in the
+README only between `<!-- REMOVE-AFTER <date> -->` and
+`<!-- END REMOVE-AFTER <date> -->` comments, with the removal date one week
+after the retirement. Remove the block on that date.

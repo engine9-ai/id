@@ -5,7 +5,7 @@ website with one script tag. No server code, no database, no framework
 required.
 
 `@engine9/id` is the browser client for engine9 identity. Visitors log in
-through [delegate](https://delegate.engine9.ai), choose which **fields** to
+through [delegate](https://delegate.network), choose which **fields** to
 share with your website, and come back with a signed **Identity Token**. The
 library verifies that token in the browser and then shows or hides parts of
 your page based on the visitor's **Identity Level** (0–4).
@@ -22,6 +22,9 @@ JavaScript hides it until the visitor logs in. It is **not** a security
 boundary (see [What a browser-only login can and cannot do](#what-a-browser-only-login-can-and-cannot-do)).
 
 Zero runtime dependencies. WebCrypto only. [MIT licensed](./LICENSE).
+
+Release notes (what changed, what was retired, and what a site changes at each
+release): [CHANGELOG.md](CHANGELOG.md).
 
 ## Quick start (about ten minutes)
 
@@ -529,8 +532,21 @@ Every option is optional.
 | `onError`     | `console.warn`                 | Called when login fails or a redirect returns `error=`           |
 | `storage`     | `'local'`                      | `'session'` forgets on tab close; `'memory'` on page unload      |
 | `domain`      | from `location`                | Your Domain (`host` or `host:port`). Set it when testing behind a proxy |
-| `delegateUrl` | `https://delegate.engine9.ai`  | Your own delegate deployment                                     |
+| `delegateUrl` | `https://delegate.network`     | Your own delegate deployment                                     |
 | `core`        | —                              | `{ apiUrl, publicApiKey }` for [`@engine9/core`](#going-further) |
+
+The token's `iss` is checked against the one `delegateUrl` you configured.
+Leave `delegateUrl` unset to use the default, `https://delegate.network`.
+
+<!-- REMOVE-AFTER 2026-10-30: delegate.engine9.ai retirement notice. Delete this block one week after the old host is retired. -->
+> **Moving to `delegate.network`.** `https://delegate.engine9.ai` is being
+> retired and will stop working no later than 2026-10-23. If your page or
+> server sets `delegateUrl` (or an issuer, a CSP entry, or a link) to the old
+> host, change it to `https://delegate.network`, or delete `delegateUrl` to
+> use the default. Update `id.iife.js` to 1.13.0 and change any server that
+> verifies the token in the same deploy. The exact list of places is in
+> [CHANGELOG.md](CHANGELOG.md#1130-delegate-moves-to-delegatenetwork).
+<!-- END REMOVE-AFTER 2026-10-30 -->
 
 Popup mode falls back to a full-page redirect when the browser blocks the
 popup. Either way `mount()` picks up the token on return and cleans the URL.
@@ -650,10 +666,10 @@ appears only in the footer and as "{name} via Delegate" on the email.
 ```js
 const id = engine9Id.mount({
   brand: {
-    name: 'The Sirens of Sin',                       // up to 60 characters
+    name: 'The Festival',                       // up to 60 characters
     color: '#7c1d3f',                                // #rgb or #rrggbb
-    logo: 'https://thesirensofsin.com/logo.svg',     // https, on your Domain
-    wordmark: 'https://thesirensofsin.com/wordmark.svg', // wide logo, sign-in page only
+    logo: 'https://festival.engine9.ai/logo.svg',     // https, on your Domain
+    wordmark: 'https://festival.engine9.ai/wordmark.svg', // wide logo, sign-in page only
     background: '#f6eef2',                           // the sign-in page
     text: '#120a10',                                 // readable on background
     card: '#4a1942',                                 // the card, instead of a tint of background

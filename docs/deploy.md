@@ -30,7 +30,7 @@ Working example with no database: [`demo-id`](../../demo-id).
 | **UNID**           | Delegate’s id for that User in this browser                                                         |
 | **Identity Level** | How confident we are (0 = inferred, 1 = they typed something). Not a permission                     |
 | **Declared role**  | A label **you** define in page JavaScript to show or hide content. Soft only                        |
-| **delegate**       | The identity service. Default: `https://delegate.engine9.ai`                                        |
+| **delegate**       | The identity service. Default: `https://delegate.network`                                        |
 
 We do not use the words Account or Audience. The token still has a standard
 JWT field named `aud`; it must equal your Domain string.
@@ -90,9 +90,17 @@ the Login button in the `data-e9-login-widget` element. Call both once on
 every page, in browser code.
 
 Delegate is the default identity provider. You only set `delegateUrl` (on
-both calls) if you are not using `https://delegate.engine9.ai`. Another
+both calls) if you are not using `https://delegate.network`. Another
 provider is possible later; it must return the same identity shape. See
 [without-core.md](./without-core.md).
+
+<!-- REMOVE-AFTER 2026-10-30: delegate.engine9.ai retirement notice. Delete this block one week after the old host is retired. -->
+> **Moving to `delegate.network`.** `https://delegate.engine9.ai` is being
+> retired and will stop working no later than 2026-10-23. If you set
+> `delegateUrl` to it, change it to `https://delegate.network` or delete it,
+> and use `@engine9/id` 1.13.0. See
+> [CHANGELOG.md](../CHANGELOG.md#1130-delegate-moves-to-delegatenetwork).
+<!-- END REMOVE-AFTER 2026-10-30 -->
 
 ## Step 2 — Configure the widget
 

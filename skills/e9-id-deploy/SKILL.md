@@ -82,7 +82,7 @@ npm install @engine9/id
 import { createEngine9Id, isStateMismatch } from "@engine9/id";
 
 const id = createEngine9Id({
-  delegateUrl: "https://delegate.engine9.ai",
+  delegateUrl: "https://delegate.network",
   // domain defaults from location via domainFromUrl
   storage: "session",
 });
