@@ -17,7 +17,7 @@ import { describeLevel } from './levels';
 import { meetsRequiredAuth, type DeclaredRoleRegistry, type RequiredAuth } from './roles';
 import type { Engine9Id, Engine9IdConfig, Identity, IdentityMode } from './types';
 import { DEFAULT_DELEGATE_URL } from './types';
-import { isInsecureUrl, trimSlash } from './url';
+import { isInsecureUrl, parseDelegateCallback, trimSlash } from './url';
 
 export interface LoginWidgetRole {
   id: string;
@@ -44,6 +44,11 @@ export interface LoginWidgetUser {
 export interface LoginWidgetLabels {
   /** Button text when no one is logged in. */
   login: string;
+  /**
+   * Button text while a login is in flight: after Login is clicked, and on
+   * the return from Delegate while the site finishes the login (`onLogin`).
+   */
+  loggingIn: string;
   /** `{site}` is replaced with `siteName`. */
   title: string;
   signedInTitle: string;
@@ -147,6 +152,7 @@ export interface LoginWidget {
 
 const DEFAULT_LABELS: LoginWidgetLabels = {
   login: 'Login',
+  loggingIn: 'Logging in…',
   title: 'Log in to {site}',
   signedInTitle: 'Signed in to {site}',
   google: 'Log in with Google',
@@ -201,6 +207,14 @@ button:disabled { cursor: default; opacity: .55; }
   background: var(--e9-bg); color: var(--e9-fg);
 }
 .trigger:hover { background: var(--e9-surface); }
+.trigger[aria-busy="true"] { cursor: progress; }
+.spin {
+  flex: none; width: .9em; height: .9em; border-radius: 50%;
+  border: 2px solid var(--e9-border); border-top-color: var(--e9-accent);
+  animation: e9-spin .8s linear infinite;
+}
+@keyframes e9-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } }
 .trigger .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pill {
   flex: none; font-size: .72em; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
@@ -358,6 +372,12 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
     mode: redirect ? ('redirect' as const) : ('popup' as const),
   };
 
+  // Back from Delegate with a token: the site finishes the login (its server
+  // call can take a few seconds), so the button says "Logging in…" from the
+  // first paint rather than showing Login until the session arrives.
+  const returning =
+    typeof location !== 'undefined' && Boolean(parseDelegateCallback()?.token);
+
   const state: {
     user: LoginWidgetUser | null | undefined;
     role: string | null;
@@ -367,7 +387,7 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
   } = {
     user: options.user,
     role: options.role ?? options.user?.role ?? null,
-    busy: null,
+    busy: returning ? labels.loggingIn : null,
     status: null,
     logoutDelegate: options.logoutDelegate === true,
   };
@@ -413,11 +433,17 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
 
   const renderTrigger = (v: View): void => {
     // In redirect mode the button is the whole login: hold it until the page leaves.
-    trigger.disabled = redirect && !v.signedIn && Boolean(state.busy);
-    host.dataset.state = v.signedIn ? 'signed-in' : 'signed-out';
+    const loggingIn = !v.signedIn && Boolean(state.busy);
+    trigger.disabled = redirect && loggingIn;
+    trigger.setAttribute('aria-busy', String(loggingIn));
+    host.dataset.state = v.signedIn ? 'signed-in' : loggingIn ? 'logging-in' : 'signed-out';
     host.dataset.role = v.signedIn ? state.role ?? '' : '';
     if (!v.signedIn) {
-      trigger.innerHTML = esc(labels.login);
+      // Say so at once: the click, and the return from Delegate while the
+      // site's own server finishes the login, both take a moment.
+      trigger.innerHTML = loggingIn
+        ? `<span class="spin" aria-hidden="true"></span><span>${esc(labels.loggingIn)}</span>`
+        : esc(labels.login);
       trigger.title = '';
       return;
     }
@@ -575,7 +601,7 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
   };
 
   const login = (): Promise<void> =>
-    run('Waiting for Delegate…', async () => {
+    run(redirect ? labels.loggingIn : 'Waiting for Delegate…', async () => {
       const identity = await id.requestIdentity(request);
       if (!identity) return;
       await afterIdentity(identity);
@@ -687,6 +713,16 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
     open();
   };
 
+  // Back/forward restores the page as it was left, "Logging in…" included,
+  // after the person came back from Delegate without finishing.
+  const onPageShow = (event: PageTransitionEvent): void => {
+    if (event.persisted && state.busy && redirect && !view().signedIn) {
+      state.busy = null;
+      render();
+    }
+  };
+  if (typeof window !== 'undefined') window.addEventListener('pageshow', onPageShow);
+
   trigger.addEventListener('click', onTrigger);
   dialog.addEventListener('click', onDialogClick);
   dialog.addEventListener('change', onDialogChange);
@@ -704,7 +740,10 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
       // Not a failure: the button stays on Login and the next login starts over.
       if (!isStateMismatch(error)) onError(error);
     })
-    .finally(render);
+    .finally(() => {
+      if (returning) state.busy = null;
+      render();
+    });
   render();
 
   return {
@@ -722,6 +761,7 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
     },
     destroy() {
       unsubscribe();
+      if (typeof window !== 'undefined') window.removeEventListener('pageshow', onPageShow);
       trigger.removeEventListener('click', onTrigger);
       dialog.removeEventListener('click', onDialogClick);
       dialog.removeEventListener('change', onDialogChange);

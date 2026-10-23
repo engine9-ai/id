@@ -250,7 +250,7 @@ section. Page-local roles like these are
 | `mode` | `'redirect'` | Signed-out Login is a full-page trip to Delegate. `mode: 'popup'` opens the dialog first. See [The simple button](#the-simple-button) |
 | `branding` | `true` | Delegate mark in the dialog and "Sign-in by Delegate" footer |
 | `siteName` | `location.hostname` | Name in the dialog title |
-| `labels` | English | Any button or title text. `{site}` in `title` / `signedInTitle` is replaced |
+| `labels` | English | Any button or title text (`login`, `loggingIn`, …). `{site}` in `title` / `signedInTitle` is replaced |
 | `theme` | `'auto'` | `'light'` or `'dark'`; `auto` follows the system |
 | `roles`, `role`, `onRoleChange` | none | Role section |
 | `user` | from the Identity Token | Your server session's `{ email, role, level }`. Set it when your session outlives the token |
@@ -258,6 +258,15 @@ section. Page-local roles like these are
 | `onLogout()` | none | End your server session |
 | `logoutDelegate` | `false` | `false` logs out of this site only; `'ask'` adds a checkbox to also end the Delegate session; `true` always ends it |
 | `onError` | `console.warn` | Every error the dialog shows |
+
+While a login is in flight the button reads **Logging in…** with a spinner
+(`labels.loggingIn`; `data-state="logging-in"`, `aria-busy="true"` on the
+button). That covers the click, and the return from Delegate until `onLogin`
+answers: the widget sees the `delegate_token` in the URL on the first paint,
+so a visitor never sees a plain Login button while your server is still
+finishing the login. Keep `onLogin` fast (see
+[With a server session](#with-a-server-session)): it is the part of the wait
+you control.
 
 The widget returns `{ element, id, open(), close(), update({ user?, role? }), destroy() }`.
 Call `widget.open()` from your own link to show the dialog, and
@@ -296,6 +305,21 @@ loginWidget({
 ```
 
 The festival demo ([`demo-festival`](../demo-festival)) does exactly this.
+
+**Keep the return from Delegate quick.** Between Delegate's last screen and
+the logged-in button, your server verifies the token, finds or creates the
+person, and sets the session cookie. The widget shows **Logging in…** the
+whole time, but a cold server can still make it feel long:
+
+- Do not install or migrate during a login. Asking "is this already set up?"
+  is one query; installing every schema plugin is dozens. Install at deploy
+  time and check on login (see
+  [`demo-festival`](../demo-festival/src/lib/engine9.ts)).
+- Do **only** the login in `onLogin`: verify, resolve the person, set the
+  cookie, return `{ email, role, level }`. Load everything else (profile,
+  history, recommendations) after the button has updated.
+- Return the `user` from `onLogin` so the widget does not need a second
+  request to learn who logged in.
 
 ## Content gates in HTML
 

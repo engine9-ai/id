@@ -227,6 +227,7 @@ describe('loginWidget', () => {
   it('drops the Delegate branding and relabels on request', () => {
     widget = loginWidget({
       id: fakeId(),
+      mode: 'popup',
       branding: false,
       siteName: 'Solstice Wave',
       labels: { login: 'Sign in', title: 'Welcome to {site}' },
@@ -237,6 +238,65 @@ describe('loginWidget', () => {
     expect(p.dialog.querySelector('h2')?.textContent).toBe('Welcome to Solstice Wave');
     expect(p.dialog.querySelector('.brand')).toBeNull();
     expect(p.dialog.querySelector('.foot')).toBeNull();
+  });
+
+  it('says Logging in… on the button as soon as Login is clicked (redirect mode)', async () => {
+    const id = fakeId();
+    let finish!: () => void;
+    id.requestIdentity.mockImplementation(
+      () => new Promise<Identity>((resolve) => (finish = () => resolve(identity()))),
+    );
+    widget = loginWidget({ id });
+    const p = parts(widget);
+    expect(p.trigger.textContent).toBe('Login');
+    p.trigger.click();
+    expect(p.trigger.textContent).toBe('Logging in…');
+    expect(p.trigger.disabled).toBe(true);
+    expect(p.trigger.getAttribute('aria-busy')).toBe('true');
+    expect(widget.element.dataset.state).toBe('logging-in');
+    finish();
+    await settle();
+    expect(p.trigger.getAttribute('aria-busy')).toBe('false');
+  });
+
+  it('says Logging in… from the first paint on the return from Delegate, until onLogin answers', async () => {
+    history.replaceState(null, '', '/?delegate_token=abc.def.ghi&state=s1');
+    try {
+      const id = fakeId();
+      let answer!: () => void;
+      id.handleCallback.mockImplementation(async () => identity());
+      const onLogin = vi.fn(
+        () =>
+          new Promise<{ email: string; level: number }>((resolve) => {
+            answer = () => resolve({ email: 'server@example.com', level: 3 });
+          }),
+      );
+      widget = loginWidget({ id, onLogin });
+      const p = parts(widget);
+      expect(p.trigger.textContent).toBe('Logging in…');
+      await settle();
+      expect(p.trigger.textContent).toBe('Logging in…');
+      answer();
+      await settle();
+      expect(p.trigger.querySelector('.who')?.textContent).toBe('server@example.com');
+      expect(p.trigger.getAttribute('aria-busy')).toBe('false');
+    } finally {
+      history.replaceState(null, '', '/');
+    }
+  });
+
+  it('goes back to Login when the return from Delegate is not this browser\'s', async () => {
+    history.replaceState(null, '', '/?delegate_token=abc.def.ghi&state=other');
+    try {
+      const id = fakeId();
+      id.handleCallback.mockImplementation(async () => null);
+      widget = loginWidget({ id });
+      expect(parts(widget).trigger.textContent).toBe('Logging in…');
+      await settle();
+      expect(parts(widget).trigger.textContent).toBe('Login');
+    } finally {
+      history.replaceState(null, '', '/');
+    }
   });
 
   it('escapes values from the identity', () => {
