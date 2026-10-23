@@ -41,6 +41,29 @@ describe('authorizeUrl', () => {
     expect(new URL(bridgeUrl({ ...base, loginLevel: 2 })).searchParams.get('login_level')).toBe('2');
   });
 
+  it('sends login_providers only when asked, as a comma list', () => {
+    const base = {
+      delegateUrl: 'https://delegate.engine9.ai',
+      domain: 'site.example',
+      returnTo: 'https://site.example/callback',
+    };
+    expect(new URL(authorizeUrl(base)).searchParams.has('login_providers')).toBe(false);
+    expect(new URL(bridgeUrl(base)).searchParams.has('login_providers')).toBe(false);
+    expect(
+      new URL(authorizeUrl({ ...base, loginProviders: ['google', 'facebook'] })).searchParams.get(
+        'login_providers',
+      ),
+    ).toBe('google,facebook');
+    expect(
+      new URL(bridgeUrl({ ...base, loginProviders: 'facebook,google' })).searchParams.get(
+        'login_providers',
+      ),
+    ).toBe('facebook,google');
+    expect(
+      new URL(authorizeUrl({ ...base, loginProviders: [] })).searchParams.has('login_providers'),
+    ).toBe(false);
+  });
+
   it('sends brand_name, brand_color, and brand_logo only when set', () => {
     const base = {
       delegateUrl: 'https://delegate.engine9.ai',

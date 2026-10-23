@@ -15,7 +15,7 @@ import { createEngine9Id } from './client';
 import { DelegateIdentityError, insecureDomainMessage, isStateMismatch } from './errors';
 import { describeLevel } from './levels';
 import { meetsRequiredAuth, type DeclaredRoleRegistry, type RequiredAuth } from './roles';
-import type { Engine9Id, Engine9IdConfig, Identity } from './types';
+import type { Engine9Id, Engine9IdConfig, Identity, IdentityMode } from './types';
 import { DEFAULT_DELEGATE_URL } from './types';
 import { isInsecureUrl, trimSlash } from './url';
 
@@ -50,6 +50,10 @@ export interface LoginWidgetLabels {
   google: string;
   /** Login button text when `loginLevel` is 2 (Delegate also offers an email link). */
   googleOrEmail: string;
+  /** Login button text when `loginProviders` includes Facebook. */
+  providers: string;
+  /** Same, when `loginLevel` is 2 as well. */
+  providersOrEmail: string;
   switchEmail: string;
   role: string;
   chooseRole: string;
@@ -73,6 +77,14 @@ export interface LoginWidgetOptions extends Engine9IdConfig {
   /** Required fields a login asks for. Default: Delegate's (`display_name`, `email`). */
   fields?: string[];
   optionalFields?: string[];
+  /**
+   * How Login reaches Delegate. `redirect` (default) makes Login a single
+   * button: signed out, one click sends the page to Delegate (one provider
+   * opens itself) and back; signed in, it opens the dialog. `popup` opens
+   * the dialog first, then a Delegate window. Switching email and logout
+   * stay popups.
+   */
+  mode?: IdentityMode;
   /** Show the Delegate mark and footer. Default `true`. */
   branding?: boolean;
   /**
@@ -139,6 +151,8 @@ const DEFAULT_LABELS: LoginWidgetLabels = {
   signedInTitle: 'Signed in to {site}',
   google: 'Log in with Google',
   googleOrEmail: 'Log in with Google or email',
+  providers: 'Log in with Google or Facebook',
+  providersOrEmail: 'Log in with Google, Facebook, or email',
   switchEmail: 'Switch email',
   role: 'Role',
   chooseRole: 'Choose a role',
@@ -276,13 +290,21 @@ function defaultOnError(error: unknown): void {
   if (typeof console !== 'undefined') console.warn('[engine9/id]', error);
 }
 
+/** True when `loginProviders` names Facebook (array or comma list). */
+function offersFacebook(providers: LoginWidgetOptions['loginProviders']): boolean {
+  if (!providers) return false;
+  const list = Array.isArray(providers) ? providers : providers.split(',');
+  return list.some((name) => name.trim().toLowerCase() === 'facebook');
+}
+
 /** Delegate sign-in branding: `brand`, else `siteName` as the name. */
 function signInBrand(options: LoginWidgetOptions): Engine9IdConfig['brand'] {
   return options.brand ?? (options.siteName ? { name: options.siteName } : undefined);
 }
 
 function pickConfig(options: LoginWidgetOptions): Engine9IdConfig {
-  const { provider, delegateUrl, domain, storage, core, fetchImpl, debug, loginLevel } = options;
+  const { provider, delegateUrl, domain, storage, core, fetchImpl, debug, loginLevel, loginProviders, warn } =
+    options;
   return {
     provider,
     delegateUrl,
@@ -292,6 +314,8 @@ function pickConfig(options: LoginWidgetOptions): Engine9IdConfig {
     fetchImpl,
     debug,
     loginLevel,
+    loginProviders,
+    warn,
     brand: signInBrand(options),
   };
 }
@@ -311,7 +335,6 @@ interface View {
  * ```
  */
 export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
-  const ownsClient = !options.id;
   const id = options.id ?? createEngine9Id(pickConfig(options));
   const labels: LoginWidgetLabels = { ...DEFAULT_LABELS, ...options.labels };
   const roles = normalizeRoles(options.roles);
@@ -323,14 +346,16 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
   const insecurePage =
     typeof location !== 'undefined' && isInsecureUrl(location.href) ? location.href : null;
   const minLevel = Math.max(1, options.minLevel ?? 1);
+  const redirect = options.mode !== 'popup';
   const request = {
     minLevel,
     maxLevel: options.maxLevel,
     fields: options.fields,
     optionalFields: options.optionalFields,
     loginLevel: options.loginLevel,
+    loginProviders: options.loginProviders,
     brand: signInBrand(options),
-    mode: 'popup' as const,
+    mode: redirect ? ('redirect' as const) : ('popup' as const),
   };
 
   const state: {
@@ -387,6 +412,8 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
   const site = (text: string): string => text.replace(/\{site\}/g, siteName);
 
   const renderTrigger = (v: View): void => {
+    // In redirect mode the button is the whole login: hold it until the page leaves.
+    trigger.disabled = redirect && !v.signedIn && Boolean(state.busy);
     host.dataset.state = v.signedIn ? 'signed-in' : 'signed-out';
     host.dataset.role = v.signedIn ? state.role ?? '' : '';
     if (!v.signedIn) {
@@ -408,13 +435,21 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
     }
     const asked = (options.fields ?? ['display_name', 'email']).map((f) => FIELD_NAMES[f] ?? f);
     const level = describeLevel(minLevel);
-    const loginText = options.loginLevel === 2 ? labels.googleOrEmail : labels.google;
+    const withEmail = options.loginLevel === 2;
+    const withFacebook = offersFacebook(options.loginProviders);
+    const loginText = withFacebook
+      ? withEmail
+        ? labels.providersOrEmail
+        : labels.providers
+      : withEmail
+        ? labels.googleOrEmail
+        : labels.google;
     return (
       `<p class="muted">${esc(siteName)} asks Delegate for your ${esc(listText(asked))}` +
       (minLevel >= 2 ? ` at Level ${minLevel} (${esc(level.name)})` : '') +
       `.</p>` +
-      `<button class="btn primary" type="button" data-action="login">${options.loginLevel === 2 ? '' : GOOGLE_ICON}<span>${esc(loginText)}</span></button>` +
-      `<p class="fine">Delegate opens a window to sign you in, then brings you back here.</p>`
+      `<button class="btn primary" type="button" data-action="login">${withEmail || withFacebook ? '' : GOOGLE_ICON}<span>${esc(loginText)}</span></button>` +
+      `<p class="fine">${redirect ? 'Delegate signs you in, then brings you back here.' : 'Delegate opens a window to sign you in, then brings you back here.'}</p>`
     );
   };
 
@@ -549,7 +584,7 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
 
   const switchEmail = (): Promise<void> =>
     run('Waiting for Delegate…', async () => {
-      const identity = await id.changeDelegateInfo(request);
+      const identity = await id.changeDelegateInfo({ ...request, mode: 'popup' });
       if (!identity) return;
       await afterIdentity(identity);
       const email = view().email;
@@ -644,23 +679,32 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
     }
   };
 
-  trigger.addEventListener('click', open);
+  const onTrigger = (): void => {
+    if (redirect && !view().signedIn && !insecurePage) {
+      void login();
+      return;
+    }
+    open();
+  };
+
+  trigger.addEventListener('click', onTrigger);
   dialog.addEventListener('click', onDialogClick);
   dialog.addEventListener('change', onDialogChange);
   const unsubscribe = id.onChange(() => {
     if (!state.busy) render();
   });
 
-  if (ownsClient) {
-    void id
-      .handleCallback()
-      .then((identity) => (identity ? afterIdentity(identity) : undefined))
-      .catch((error: unknown) => {
-        // Not a failure: the button stays on Login and the next login starts over.
-        if (!isStateMismatch(error)) onError(error);
-      })
-      .finally(render);
-  }
+  void id
+    .handleCallback()
+    .then(async (identity) => {
+      if (identity) await afterIdentity(identity);
+      if (identity && roles.length && !state.role && view().signedIn) open();
+    })
+    .catch((error: unknown) => {
+      // Not a failure: the button stays on Login and the next login starts over.
+      if (!isStateMismatch(error)) onError(error);
+    })
+    .finally(render);
   render();
 
   return {
@@ -678,7 +722,7 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
     },
     destroy() {
       unsubscribe();
-      trigger.removeEventListener('click', open);
+      trigger.removeEventListener('click', onTrigger);
       dialog.removeEventListener('click', onDialogClick);
       dialog.removeEventListener('change', onDialogChange);
       host.remove();

@@ -82,10 +82,23 @@ describe('loginWidget', () => {
     expect(trigger.querySelector('.pill')?.textContent).toBe('VIP');
   });
 
+  it('names Facebook on the login button and sends loginProviders when asked', async () => {
+    const id = fakeId();
+    widget = loginWidget({ id, mode: 'popup', roles: ROLES, loginProviders: ['google', 'facebook'] });
+    const p = parts(widget);
+    p.trigger.click();
+    expect(p.action('login')?.textContent).toBe('Log in with Google or Facebook');
+    p.action('login')!.click();
+    await settle();
+    expect(id.requestIdentity).toHaveBeenCalledWith(
+      expect.objectContaining({ loginProviders: ['google', 'facebook'] }),
+    );
+  });
+
   it('logs in from the dialog and keeps it open to pick a role', async () => {
     const id = fakeId();
     const onLogin = vi.fn();
-    widget = loginWidget({ id, roles: ROLES, onLogin, fields: ['email'], loginLevel: 2 });
+    widget = loginWidget({ id, mode: 'popup', roles: ROLES, onLogin, fields: ['email'], loginLevel: 2 });
     const p = parts(widget);
     p.trigger.click();
     expect(p.dialog.hasAttribute('open')).toBe(true);
@@ -103,7 +116,7 @@ describe('loginWidget', () => {
   });
 
   it('closes after login when there is no role to pick', async () => {
-    widget = loginWidget({ id: fakeId() });
+    widget = loginWidget({ id: fakeId(), mode: 'popup' });
     const p = parts(widget);
     p.trigger.click();
     p.action('login')!.click();

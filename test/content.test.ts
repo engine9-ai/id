@@ -214,6 +214,27 @@ describe('bindContent', () => {
     );
   });
 
+  it('data-e9-login-providers asks delegate for those sign-in buttons', () => {
+    const root = html(
+      PAGE +
+        '<button id="social" data-e9-login="1" data-e9-login-providers=" google, facebook ">Log in</button>',
+    );
+    const id = createEngine9Id({ domain: DOMAIN, storage: 'memory' });
+    const request = vi
+      .spyOn(id, 'requestIdentity')
+      .mockResolvedValue(undefined as unknown as void);
+    bindContent(id, { root });
+
+    q(root, '#social').click();
+    expect(request).toHaveBeenLastCalledWith(
+      expect.objectContaining({ loginProviders: 'google,facebook' }),
+    );
+    q(root, '#login').click();
+    expect(request).toHaveBeenLastCalledWith(
+      expect.objectContaining({ loginProviders: undefined }),
+    );
+  });
+
   it('reports login errors through onError and logout buttons clear identity', async () => {
     const root = html(PAGE);
     const id = createEngine9Id({ domain: DOMAIN, storage: 'memory' });

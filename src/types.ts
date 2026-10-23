@@ -11,8 +11,9 @@ export type ResponseMode = 'fragment' | 'query';
 /**
  * Which delegate sign-in screen a logged-out visitor sees (`login_level`).
  *
- * - `3` (default; `4` is the same screen): trusted providers only (Google).
- * - `2`: Google **or** "Email me a sign-in link".
+ * - `3` (default; `4` is the same screen): trusted providers only (Google,
+ *   plus Facebook when `loginProviders` asks and Delegate enables it).
+ * - `2`: those providers **or** "Email me a sign-in link".
  *
  * An email link proves the visitor controls the address, which is Level 2
  * (Contact Confirmed) and never more. Delegate ignores `2` when `minLevel` is
@@ -20,6 +21,15 @@ export type ResponseMode = 'fragment' | 'query';
  * `maxLevel` do. See docs/protocol.md#sign-in-screen-login_level.
  */
 export type LoginLevel = 2 | 3 | 4;
+
+/**
+ * A sign-in provider Delegate can offer (`login_providers`). Google is the
+ * default. Delegate only offers the ones its operator has enabled.
+ */
+export type LoginProvider = 'google' | 'facebook';
+
+/** `login_providers`: names in the order the buttons appear, or a comma list. */
+export type LoginProviders = LoginProvider[] | string;
 
 export type FetchImpl = (
   input: string | URL,
@@ -128,7 +138,9 @@ export interface Engine9IdProvider {
     optionalFields?: string[];
     prompt?: Prompt;
     loginLevel?: LoginLevel;
+    loginProviders?: LoginProviders;
     brand?: SignInBrand;
+    loginHint?: string;
     expiresIn?: number;
     nonce?: string;
     state?: string;
@@ -142,7 +154,9 @@ export interface Engine9IdProvider {
     optionalFields?: string[];
     prompt?: Prompt;
     loginLevel?: LoginLevel;
+    loginProviders?: LoginProviders;
     brand?: SignInBrand;
+    loginHint?: string;
     expiresIn?: number;
     nonce?: string;
     state?: string;
@@ -178,10 +192,16 @@ export interface Engine9IdConfig {
   debug?: boolean;
   /**
    * Delegate sign-in screen for every login from this client. Default `3`
-   * (Google only). `2` also offers an email sign-in link. Each request can
-   * override it. See `LoginLevel`.
+   * (trusted providers). `2` also offers an email sign-in link. Each request
+   * can override it. See `LoginLevel`.
    */
   loginLevel?: LoginLevel;
+  /**
+   * Providers Delegate offers for every login from this client, in button
+   * order (`['google', 'facebook']`). Default Google only. Delegate drops any
+   * provider its operator has not enabled. Each request can override it.
+   */
+  loginProviders?: LoginProviders;
   /** Name, color, and logo on Delegate's sign-in page and email. Each request can override it. */
   brand?: SignInBrand;
   /**
@@ -190,6 +210,13 @@ export interface Engine9IdConfig {
    * days. Each request can override it.
    */
   expiresIn?: number;
+  /**
+  /**
+   * Warn on the console (`[engine9-id]`) when Delegate will show its
+   * provider screen (popup mode, several providers, or `loginLevel: 2`).
+   * Default: on for `localhost` and `127.0.0.1`, and when `debug` is true.
+   */
+  warn?: boolean;
 }
 
 export interface RequestIdentityOptions {
@@ -200,8 +227,15 @@ export interface RequestIdentityOptions {
   prompt?: Prompt;
   /** Sign-in screen for this request. Default: the client's `loginLevel`, else `3`. */
   loginLevel?: LoginLevel;
+  /** Providers for this request. Default: the client's `loginProviders`, else Google only. */
+  loginProviders?: LoginProviders;
   /** Sign-in branding for this request. Default: the client's `brand`. */
   brand?: SignInBrand;
+  /**
+   * The visitor's email address, when this site already knows it. Delegate
+   * passes it to Google so Google can skip its account chooser.
+   */
+  loginHint?: string;
   /**
    * Identity Token lifetime in seconds. Default: the client's `expiresIn`.
    * Delegate defaults to 28800 (8 hours) and clamps at 30 days.
@@ -223,6 +257,7 @@ export interface ChangeDelegateInfoOptions {
   fields?: string[];
   optionalFields?: string[];
   loginLevel?: LoginLevel;
+  loginProviders?: LoginProviders;
   expiresIn?: number;
   mode?: IdentityMode;
   returnTo?: string;
@@ -236,9 +271,56 @@ export interface EnsureLevelOptions {
   optionalFields?: string[];
   prompt?: Prompt;
   loginLevel?: LoginLevel;
+  loginProviders?: LoginProviders;
   expiresIn?: number;
   returnTo?: string;
   responseMode?: ResponseMode;
+}
+
+/**
+ * Options for `signIn`: a full-page login that goes straight to Google and
+ * brings the visitor back signed in. Everything is optional.
+ */
+export interface SignInOptions {
+  /** Level to ask for. Default `1`. */
+  minLevel?: number;
+  maxLevel?: number;
+  /** Required fields. Default: Delegate's (`display_name`, `email`). */
+  fields?: string[];
+  optionalFields?: string[];
+  /** The visitor's email address if you already know it (skips Google's account chooser). */
+  loginHint?: string;
+  loginLevel?: LoginLevel;
+  loginProviders?: LoginProviders;
+  /** Sign-in branding. Delegate opens a single provider by itself. */
+  brand?: SignInBrand;
+  expiresIn?: number;
+  /** Page Delegate returns to. Default: this page. */
+  returnTo?: string;
+  responseMode?: ResponseMode;
+}
+
+/** What `finishSignIn` hands back and to `onSignedIn`. */
+export interface SignedIn {
+  identity: Identity;
+  /** The `@engine9/core` session, when `core` is configured and its login succeeded. */
+  session?: CoreSession;
+}
+
+/** Options for `finishSignIn`. */
+export interface FinishSignInOptions {
+  /**
+   * Runs after the Identity Token is verified and `core.login()` has
+   * finished (when `core` is configured).
+   */
+  onSignedIn?: (result: SignedIn) => void | Promise<void>;
+  /**
+   * Called when `core.login()` fails. The Identity Token is still stored, so
+   * the visitor is signed in on this page; `onSignedIn` then runs without a
+   * `session`. Default: `finishSignIn` rejects with the error and does not
+   * call `onSignedIn`.
+   */
+  onCoreError?: (error: unknown, identity: Identity) => void | Promise<void>;
 }
 
 export interface Jwk {
@@ -327,6 +409,20 @@ export interface Engine9Id {
   requestIdentity(opts: RequestIdentityOptions): Promise<Identity | void>;
   handleCallback(): Promise<Identity | null>;
   ensureLevel(n: number, opts?: EnsureLevelOptions): Promise<Identity | void>;
+  /**
+   * One call for a "Log in" button: a full-page login. Delegate opens a
+   * single provider by itself, then shows its share screen on a first visit.
+   * If the visitor is already signed in at `minLevel`, it resolves with
+   * the stored identity and starts nothing. Pair it with `finishSignIn()` on
+   * page load.
+   */
+  signIn(opts?: SignInOptions): Promise<Identity | void>;
+  /**
+   * Call on every page load. Finishes a login that returned to this page
+   * (`handleCallback()`), runs `core.login()` when `core` is configured, then
+   * `onSignedIn`. Resolves `null` when no login came back.
+   */
+  finishSignIn(opts?: FinishSignInOptions): Promise<SignedIn | null>;
   /**
    * "Change your Delegate information": reopen delegate's consent page
    * (`prompt=select`) so a signed-in visitor can pick another email address

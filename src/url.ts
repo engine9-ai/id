@@ -1,4 +1,4 @@
-import type { SignInBrand } from './types';
+import type { LoginProviders, SignInBrand } from './types';
 
 export function trimSlash(url: string): string {
   return url.replace(/\/+$/, '');
@@ -46,8 +46,12 @@ export interface AuthorizeUrlOptions {
   prompt?: string;
   /** `login_level`: delegate sign-in screen. `2` adds an email sign-in link. */
   loginLevel?: number;
+  /** `login_providers`: sign-in buttons Delegate offers (`google,facebook`). Default Google only. */
+  loginProviders?: LoginProviders;
   /** `brand_name`, `brand_color`, `brand_logo`, `brand_wordmark`, `brand_background`, `brand_text`, `brand_card`, `brand_card_text`, `brand_font`, `brand_google`. */
   brand?: SignInBrand;
+  /** `login_hint`: the visitor's email, passed to Google so it can skip the account chooser. */
+  loginHint?: string;
   /**
    * Identity Token lifetime in seconds (`expires_in`). Delegate defaults to
    * 28800 (8 hours) and clamps at 30 days.
@@ -68,7 +72,10 @@ export interface BridgeUrlOptions {
   optionalFields?: string[] | string;
   prompt?: string;
   loginLevel?: number;
+  loginProviders?: LoginProviders;
   brand?: SignInBrand;
+  /** `login_hint`: the visitor's email, passed to Google so it can skip the account chooser. */
+  loginHint?: string;
   /** Identity Token lifetime in seconds (`expires_in`). */
   expiresIn?: number;
   nonce?: string;
@@ -111,6 +118,12 @@ function fieldsParam(fields?: string[] | string): string | undefined {
   return Array.isArray(fields) ? fields.join(',') : fields;
 }
 
+function providersParam(providers?: LoginProviders): string | undefined {
+  if (!providers) return undefined;
+  const list = Array.isArray(providers) ? providers.join(',') : providers;
+  return list.trim() || undefined;
+}
+
 /** Build GET /identity/authorize. Query param is `domain` (not audience). */
 export function authorizeUrl(opts: AuthorizeUrlOptions): string {
   const base =
@@ -124,7 +137,9 @@ export function authorizeUrl(opts: AuthorizeUrlOptions): string {
   setOptional(url.searchParams, 'optional_fields', fieldsParam(opts.optionalFields));
   setOptional(url.searchParams, 'prompt', opts.prompt);
   setOptional(url.searchParams, 'login_level', opts.loginLevel);
+  setOptional(url.searchParams, 'login_providers', providersParam(opts.loginProviders));
   setBrand(url.searchParams, opts.brand);
+  setOptional(url.searchParams, 'login_hint', opts.loginHint?.trim());
   setOptional(url.searchParams, 'expires_in', opts.expiresIn);
   setOptional(url.searchParams, 'nonce', opts.nonce);
   setOptional(url.searchParams, 'state', opts.state);
@@ -144,7 +159,9 @@ export function bridgeUrl(opts: BridgeUrlOptions): string {
   setOptional(url.searchParams, 'optional_fields', fieldsParam(opts.optionalFields));
   setOptional(url.searchParams, 'prompt', opts.prompt);
   setOptional(url.searchParams, 'login_level', opts.loginLevel);
+  setOptional(url.searchParams, 'login_providers', providersParam(opts.loginProviders));
   setBrand(url.searchParams, opts.brand);
+  setOptional(url.searchParams, 'login_hint', opts.loginHint?.trim());
   setOptional(url.searchParams, 'expires_in', opts.expiresIn);
   setOptional(url.searchParams, 'nonce', opts.nonce);
   setOptional(url.searchParams, 'state', opts.state);

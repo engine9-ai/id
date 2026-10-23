@@ -179,6 +179,50 @@ describe('changeDelegateInfo', () => {
   });
 });
 
+describe('loginProviders', () => {
+  function redirectingClient(loginProviders?: ('google' | 'facebook')[]) {
+    const buildAuthorizeUrl = vi.fn(() => '#login');
+    const id = createEngine9Id({
+      domain: DOMAIN,
+      storage: 'memory',
+      loginProviders,
+      provider: {
+        id: 'test',
+        discover: () => Promise.reject(new Error('unused')),
+        verifyToken: () => Promise.reject(new Error('unused')),
+        buildAuthorizeUrl,
+      },
+    });
+    return { id, buildAuthorizeUrl };
+  }
+
+  afterEach(() => setPageUrl('/'));
+
+  it('sends nothing by default, so delegate offers Google only', async () => {
+    const { id, buildAuthorizeUrl } = redirectingClient();
+    await id.requestIdentity({ minLevel: 1, mode: 'redirect' });
+    expect(buildAuthorizeUrl).toHaveBeenLastCalledWith(
+      expect.objectContaining({ loginProviders: undefined }),
+    );
+  });
+
+  it('applies the client loginProviders to every request, and a request can override it', async () => {
+    const { id, buildAuthorizeUrl } = redirectingClient(['google', 'facebook']);
+    await id.requestIdentity({ minLevel: 1, mode: 'redirect' });
+    expect(buildAuthorizeUrl).toHaveBeenLastCalledWith(
+      expect.objectContaining({ loginProviders: ['google', 'facebook'] }),
+    );
+    await id.requestIdentity({ minLevel: 1, mode: 'redirect', loginProviders: ['google'] });
+    expect(buildAuthorizeUrl).toHaveBeenLastCalledWith(
+      expect.objectContaining({ loginProviders: ['google'] }),
+    );
+    await id.ensureLevel(2, { mode: 'redirect' });
+    expect(buildAuthorizeUrl).toHaveBeenLastCalledWith(
+      expect.objectContaining({ loginProviders: ['google', 'facebook'] }),
+    );
+  });
+});
+
 describe('loginLevel', () => {
   function redirectingClient(loginLevel?: 2 | 3) {
     const buildAuthorizeUrl = vi.fn(() => '#login');

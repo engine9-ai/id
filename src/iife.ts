@@ -23,6 +23,7 @@ import {
   createRoleRegistry,
   visibleContent,
 } from './roles';
+import { skipDowngrades } from './skip';
 import { verifyIdentityToken } from './verify';
 import { loginWidget } from './widget';
 
@@ -52,6 +53,7 @@ const engine9Id = {
   createPersonForm,
   isStateMismatch,
   STATE_MISMATCH,
+  skipDowngrades,
 };
 
 declare global {

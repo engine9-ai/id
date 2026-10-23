@@ -11,6 +11,7 @@ import { defaultConfiguration } from './discovery';
 import { openIdentityPopup, openLogoutPopup } from './popup';
 import { createDelegateProvider } from './provider';
 import { randomId } from './random';
+import { isLocalPage, skipDowngrades } from './skip';
 import { createStorage, isPersistentStore, STORAGE_KEYS } from './storage';
 import type {
   ChangeDelegateInfoOptions,
@@ -19,10 +20,13 @@ import type {
   Engine9IdProvider,
   EnsureLevelOptions,
   FetchImpl,
+  FinishSignInOptions,
   GateOptions,
   Identity,
   LogoutOptions,
   RequestIdentityOptions,
+  SignedIn,
+  SignInOptions,
 } from './types';
 import { DEFAULT_DELEGATE_URL } from './types';
 import {
@@ -91,6 +95,17 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
   const provider = resolveProvider(config, fetchImpl);
   const log = createDebugLog(config.debug);
   const listeners = new Set<(identity: Identity | null) => void>();
+  const warned = new Set<string>();
+
+  const warnDowngrades = (reasons: string[]): void => {
+    const on = config.warn ?? (config.debug === true || isLocalPage(currentHref()));
+    if (!on || typeof console === 'undefined') return;
+    for (const reason of reasons) {
+      if (warned.has(reason)) continue;
+      warned.add(reason);
+      console.warn('[engine9-id]', reason);
+    }
+  };
 
   const notify = (identity: Identity | null): void => {
     for (const cb of listeners) cb(identity);
@@ -152,8 +167,21 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     }
     const { nonce, state } = beginRequest();
     const loginLevel = opts.loginLevel ?? config.loginLevel;
+    const loginProviders = opts.loginProviders ?? config.loginProviders;
     const brand = opts.brand ?? config.brand;
     const expiresIn = opts.expiresIn ?? config.expiresIn;
+    warnDowngrades(
+      skipDowngrades({
+        mode: opts.mode,
+        brand,
+        loginProviders,
+        loginLevel,
+        minLevel: opts.minLevel,
+        prompt: opts.prompt,
+        fields: opts.fields,
+        optionalFields: opts.optionalFields,
+      }),
+    );
     log('request', {
       mode: opts.mode,
       domain,
@@ -172,7 +200,9 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       optionalFields: opts.optionalFields,
       prompt: opts.prompt,
       loginLevel,
+      loginProviders,
       brand,
+      loginHint: opts.loginHint,
       expiresIn,
       nonce,
       state,
@@ -295,6 +325,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
           responseMode: opts.responseMode,
           prompt: 'none',
           loginLevel: opts.loginLevel,
+          loginProviders: opts.loginProviders,
           expiresIn: opts.expiresIn,
         });
         if (silent && meetsLevel(silent, n)) return silent;
@@ -315,6 +346,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       responseMode: opts.responseMode,
       prompt: opts.prompt,
       loginLevel: opts.loginLevel,
+      loginProviders: opts.loginProviders,
       expiresIn: opts.expiresIn,
     });
   };
@@ -335,6 +367,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       responseMode: opts.responseMode,
       prompt: 'select',
       loginLevel: opts.loginLevel,
+      loginProviders: opts.loginProviders,
       expiresIn: opts.expiresIn,
     });
   };
@@ -362,6 +395,26 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     if (built !== undefined) assignLocation(await built);
   };
 
+  const signIn = async (opts: SignInOptions = {}): Promise<Identity | void> => {
+    const minLevel = opts.minLevel ?? 1;
+    const current = getIdentity();
+    if (meetsLevel(current, minLevel)) return current ?? undefined;
+    return requestIdentity({
+      minLevel,
+      maxLevel: opts.maxLevel,
+      fields: opts.fields,
+      optionalFields: opts.optionalFields,
+      loginHint: opts.loginHint,
+      loginLevel: opts.loginLevel,
+      loginProviders: opts.loginProviders,
+      brand: opts.brand ?? config.brand,
+      expiresIn: opts.expiresIn,
+      returnTo: opts.returnTo,
+      responseMode: opts.responseMode,
+      mode: 'redirect',
+    });
+  };
+
   const core = config.core
     ? createCoreClient({
         ...config.core,
@@ -374,6 +427,24 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
         },
       })
     : undefined;
+
+  const finishSignIn = async (opts: FinishSignInOptions = {}): Promise<SignedIn | null> => {
+    const identity = await handleCallback();
+    if (!identity) return null;
+    let session: SignedIn['session'];
+    if (core) {
+      try {
+        session = (await core.login()).session;
+      } catch (err) {
+        log('core_login:failed', { message: err instanceof Error ? err.message : String(err) });
+        if (!opts.onCoreError) throw err;
+        await opts.onCoreError(err, identity);
+      }
+    }
+    const result: SignedIn = { identity, session };
+    await opts.onSignedIn?.(result);
+    return result;
+  };
 
   return {
     async getDomainUnid(): Promise<string> {
@@ -391,6 +462,8 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     requestIdentity,
     handleCallback,
     ensureLevel,
+    signIn,
+    finishSignIn,
     changeDelegateInfo,
     logout,
     onChange(cb) {

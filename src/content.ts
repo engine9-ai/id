@@ -17,6 +17,7 @@ import type {
   Identity,
   IdentityMode,
   LoginLevel,
+  LoginProviders,
   Prompt,
 } from './types';
 
@@ -45,9 +46,15 @@ export const CONTENT_ATTRIBUTES = {
   prompt: 'data-e9-prompt',
   /**
    * Delegate sign-in screen a login button asks for. `2` adds an email
-   * sign-in link to Google; otherwise Google only. See `LoginLevel`.
+   * sign-in link to the provider buttons; otherwise providers only. See
+   * `LoginLevel`.
    */
   loginLevel: 'data-e9-login-level',
+  /**
+   * Comma-separated providers a login button asks Delegate to offer, in
+   * order (`google,facebook`). Default Google only. See `LoginProvider`.
+   */
+  loginProviders: 'data-e9-login-providers',
   /** Replace text with a shared field (`given_name`, `email`, …). */
   field: 'data-e9-field',
   /** Replace text with the Level number, or its name when the value is `name`. */
@@ -104,6 +111,11 @@ function parseFields(raw: string | null): string[] | undefined {
 function parseLoginLevel(raw: string | null): LoginLevel | undefined {
   const n = Number(raw);
   return raw !== null && (n === 2 || n === 3 || n === 4) ? n : undefined;
+}
+
+function parseLoginProviders(raw: string | null): LoginProviders | undefined {
+  const list = parseFields(raw);
+  return list ? list.join(',') : undefined;
 }
 
 function parsePrompt(raw: string | null): Prompt | undefined {
@@ -215,6 +227,7 @@ export function bindContent(
         optionalFields,
         prompt,
         loginLevel: parseLoginLevel(loginEl.getAttribute(CONTENT_ATTRIBUTES.loginLevel)),
+        loginProviders: parseLoginProviders(loginEl.getAttribute(CONTENT_ATTRIBUTES.loginProviders)),
         mode: options.mode ?? 'popup',
       }).catch(onError);
       return;
@@ -228,6 +241,7 @@ export function bindContent(
         fields: parseFields(changeEl.getAttribute(CONTENT_ATTRIBUTES.fields)),
         optionalFields: parseFields(changeEl.getAttribute(CONTENT_ATTRIBUTES.optionalFields)),
         loginLevel: parseLoginLevel(changeEl.getAttribute(CONTENT_ATTRIBUTES.loginLevel)),
+        loginProviders: parseLoginProviders(changeEl.getAttribute(CONTENT_ATTRIBUTES.loginProviders)),
         mode: options.mode ?? 'popup',
       }).catch(onError);
       return;
@@ -303,6 +317,8 @@ export function mount(options: MountOptions = {}): MountedEngine9Id {
     requestIdentity: (opts) => id.requestIdentity(opts),
     handleCallback: () => id.handleCallback(),
     ensureLevel: (n, opts) => id.ensureLevel(n, opts),
+    signIn: (opts) => id.signIn(opts),
+    finishSignIn: (opts) => id.finishSignIn(opts),
     changeDelegateInfo: (opts) => id.changeDelegateInfo(opts),
     logout: (opts) => id.logout(opts),
     onChange: (cb) => id.onChange(cb),

@@ -36,6 +36,7 @@ export {
   createPersonForm,
 } from './forms';
 export { createDelegateProvider } from './provider';
+export { skipDowngrades } from './skip';
 export { loginWidget } from './widget';
 
 export type {
@@ -50,6 +51,7 @@ export type {
   Engine9IdProvider,
   EnsureLevelOptions,
   FetchImpl,
+  FinishSignInOptions,
   GateOptions,
   Identity,
   IdentityAuth,
@@ -59,12 +61,16 @@ export type {
   Jwk,
   Jwks,
   LoginLevel,
+  LoginProvider,
+  LoginProviders,
   LogoutOptions,
   Prompt,
   RequestIdentityOptions,
   ResponseMode,
+  SignedIn,
   SignInBrand,
   SignInGoogleButton,
+  SignInOptions,
   StorageKind,
 } from './types';
 export type { ContentGate, LevelDescription } from './levels';

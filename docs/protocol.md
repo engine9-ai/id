@@ -190,13 +190,24 @@ Query:
   covers the request (see [Change your Delegate information](#change-your-delegate-information)).
   `login` sends a signed-out browser to sign in first.
 - `login_level` — `2` or `3` (default `3`). Which sign-in screen a
-  signed-out browser sees. `3` offers Google only; `2` adds an email sign-in
-  link. Ignored (treated as `3`) when `min_level` is 3 or more. See
-  [Sign-in screen](#sign-in-screen-login_level).
+  signed-out browser sees. `3` offers trusted providers only; `2` adds an
+  email sign-in link. Ignored (treated as `3`) when `min_level` is 3 or more.
+  See [Sign-in screen](#sign-in-screen-login_level).
+- `login_providers` — comma-separated provider names in button order, from
+  `google` and `facebook` (default `google`). Which provider buttons a
+  signed-out browser sees. Delegate only offers providers its operator has
+  enabled. See [Sign-in providers](#sign-in-providers-login_providers).
 - `brand_name`, `brand_color`, `brand_logo`, `brand_wordmark`,
   `brand_background`, `brand_text`, `brand_card`, `brand_card_text`,
   `brand_font`, `brand_google` — optional sign-in branding.
   See [Branding](#branding).
+- `login_hint` — optional email address of the person signing in, when the
+  Domain already knows it. Delegate passes it to Google as `login_hint` so
+  Google can skip its account chooser. It is ignored unless it looks like an
+  email address, ignored with Facebook, and never changes who is signed in.
+  Without it Delegate uses the Google address this browser last signed in
+  with (kept in Delegate's `localStorage`, cleared by Delegate's own Sign
+  out).
 - `nonce`, `state` — opaque client values
 - `response_mode` — `fragment` (default) or `query`
 - `expires_in` — Identity Token lifetime in seconds. Default `28800`
@@ -227,17 +238,18 @@ Behavior:
    does not re-prompt.
 3. If `prompt=none` and that is not possible, redirect with
    `error=interaction_required` (or `login_required`).
-4. Otherwise show consent: required fields locked, optional fields as
-   checkboxes, the User's email addresses to pick from (the Grant's choice,
-   else the default, preselected), a link to add another address, a link to
-   use a different Google account, "Stay anonymous (Level 0)", and login when
-   required. Share stays disabled until every required field has a value. On
+4. Otherwise show the share screen: required fields locked, optional fields
+   as checkboxes, the User's email addresses to pick from (the Grant's
+   choice, else the default, preselected), a link to add another address, and
+   "Use a different account" (`/login?switch=1`, which opens the provider
+   chooser or the single provider with `select_account`). A signed-out
+   visitor is sent to `/login` first; the share screen never signs anyone
+   in. Share stays disabled until every required field has a value. On
    Share, `requested` is the union of the old list and this
    request, `required` is this request's required list, `shared` is what the
    User checked, and the picked address is stored on the Grant. A picked
    address that is not on the User is `invalid_request`. Declining a required
    field is the anonymous outcome (`level_unavailable` when `min_level > 0`).
-   Staying anonymous does not revoke an existing Grant.
 
 Success:
 
@@ -261,6 +273,66 @@ Codes: `interaction_required`, `login_required`, `level_unavailable`,
 redirects. Its `requestIdentity` rejects with `insecure_domain` on any plain
 `http:` page other than `localhost` / `127.0.0.1`.
 
+## When a Delegate screen appears
+
+Sign-in has five steps. Delegate owns 2–4. The Domain owns 1 and 5.
+
+1. **The Button** — the Domain's Login control (`@engine9/id` `loginWidget`,
+   or a link to `/api/auth/start`). Signed in, it shows the role; signed out,
+   it starts this flow.
+2. **Provider Selector** (`/login`) — Google, Facebook, email link. Skipped
+   when there is exactly one provider, or the visitor is already signed in
+   to Delegate.
+3. **The Provider** — Google, Facebook, or the emailed link. Skipped when
+   that provider already has a session (`login_hint` helps Google pick).
+4. **Share screen** (the consent page on `/identity/authorize`) — which
+   fields, and which email, to send this Domain. The email may differ from
+   the provider's. Skipped only when an active Grant already covers the
+   request (`grantCoversRequest`).
+5. **The Domain** — receives the Identity Token. Roles and the rest of The
+   Button take over.
+
+A first-time visitor to a Domain always sees step 4. That is Delegate's
+value: they confirm what to share.
+
+**Provider Selector (`/login`)** appears when the browser has no Delegate
+session and `min_level` is above 0 (a signed-out Level 0 request is answered
+silently), or `prompt=login` or `switch=1` was sent. It then stays on
+screen, with its buttons, when any of these holds:
+
+| Reason | Why |
+| --- | --- |
+| The request is a popup (`/identity/bridge`) | A browser blocks a window opened without a click, and the provider cannot run in the popup. |
+| `login_providers` lists more than one provider | The person has to pick. |
+| `login_level=2` (and `min_level` below 3) | The email-link field is on the screen. |
+| `prompt=consent` | The person asked to review; the screen offers Continue or another account. |
+| The Domain is not allowed | Delegate's own look, Google only. |
+| The provider was cancelled or failed less than 10 minutes ago in this tab | The button returns so a cancel is not a loop. |
+| Firebase could not load or start (blocked script, blocked helper page) | There is nothing to redirect with; the page explains why. |
+| The page is an email-link landing | The link finishes the sign-in. |
+
+**The Provider** is skipped when this browser is already signed in to that
+provider. `login_hint` (the Domain's, else the last Google address in this
+tab) lets Google skip its account chooser. "Use a different account" on the
+share screen goes to `/login?switch=1`, which does not bounce a signed-in
+visitor back and opens the single provider with `select_account` (or shows
+the buttons when there are several).
+
+**Share screen** appears after the visitor is signed in to Delegate when any
+of these holds. A first visit always shows it.
+
+| Reason | Why |
+| --- | --- |
+| No active Grant for this User and Domain | First visit: nothing has been shared yet. |
+| The request asks for a field the Grant never saw | `fields` or `optional_fields` grew since the person last answered. |
+| A required field is not shared, or has no value | For example `email` is required and the User has none. |
+| The email address the Grant chose was removed | Delegate asks rather than send another one. |
+| `prompt=select` or `prompt=consent` | The Domain asked for the screen. |
+
+`prompt=none` never shows a screen: it answers with a token or an error
+(`login_required` / `interaction_required`). A request with `min_level=0`
+and no Delegate session returns an anonymous token and shows nothing.
+
 ## Sign-in screen (`login_level`)
 
 When a request needs a signed-in User and the browser has no Delegate
@@ -269,8 +341,8 @@ session, `/identity/authorize` and `/identity/bridge` redirect to
 
 | `login_level` | Screen | Sign-in methods | Highest Level that sign-in can reach |
 | --- | --- | --- | --- |
-| omitted, `3`, or `4` (default) | Trusted provider | Sign in with Google | 4 (3, plus a second factor) |
-| `2` | Contact confirmation | Sign in with Google, **or** "Email me a sign-in link" | 2 for the email link; 3–4 for Google |
+| omitted, `3`, or `4` (default) | Trusted provider | Sign in with Google (and Facebook when asked, see [Sign-in providers](#sign-in-providers-login_providers)) | 4 (3, plus a second factor) |
+| `2` | Contact confirmation | The provider buttons, **or** "Email me a sign-in link" | 2 for the email link; 3–4 for a trusted provider |
 
 Why the default has no email link: a link in an inbox proves the person
 controls that address. That is Level 2 (Contact Confirmed), never Level 3.
@@ -314,6 +386,54 @@ Email links and other browsers:
   `state_mismatch` and `mount()` / `loginWidget()` drop it quietly. A server
   callback with its own `state` restarts the login once.
 
+## Sign-in providers (`login_providers`)
+
+Optional, on `/identity/authorize` and `/identity/bridge`. Delegate stores
+none of it: it is read from each request and carried to `/login` inside
+`return_to`, like `login_level`.
+
+| Value | Button | Firebase provider |
+| --- | --- | --- |
+| `google` (default) | Sign in with Google | `google.com` |
+| `facebook` | Continue with Facebook | `facebook.com` |
+
+Rules:
+
+- A comma list in button order: `login_providers=google,facebook`. Unknown
+  values and duplicates are dropped. An empty or unrecognized list means
+  `google`.
+- Delegate's operator limits the list with `ENABLED_PROVIDERS` (default
+  `google.com`). A request can choose among enabled providers; it cannot turn
+  one on. At the default screen (`login_level` 3, and always when `min_level`
+  is 3 or more) the list is also limited to `TRUSTED_PROVIDERS`.
+- Facebook is always shown with Google, when Google is enabled, so a person
+  whose address already belongs to a Google User can finish (see below).
+- A Domain that does not pass the allow rule gets Google only.
+- One provider on a full-page login opens that provider by itself (the
+  selector is skipped). A popup still shows the button: a browser blocks a
+  window opened without a click.
+- The Identity Token's `auth.provider` is the Firebase provider that signed
+  the person in (`google.com` or `facebook.com`). Sites that check it must
+  accept both when they ask for Facebook.
+- Facebook may return no email, or one Facebook has not confirmed. Delegate
+  does not mark a Facebook email verified. A Facebook sign-in can reach
+  Level 3 (a trusted provider) while `fields.email_verified` is `false`.
+
+One account per email: when a Facebook sign-in's address already belongs to
+a Google User, Firebase refuses the second account. `/login` keeps the
+Facebook credential for 10 minutes in this browser, tells the person
+"<masked address> already signs in with Google. Continue with Google to add
+Facebook.", highlights the Google button, and passes the address to Google as
+`login_hint`. After the Google sign-in, if the Google address matches, it adds
+Facebook to that User. A later Facebook sign-in then reaches the same User
+and the same `sub`. A failure to add Facebook never stops the sign-in.
+
+`@engine9/id`: `createEngine9Id({ loginProviders: ['google', 'facebook'] })`
+or `mount({ loginProviders: [...] })` for every login,
+`requestIdentity({ …, loginProviders })` for one request, or
+`data-e9-login-providers="google,facebook"` on a login button.
+`@engine9/core`: `auth.identityUrl({ …, loginProviders: ['google', 'facebook'] })`.
+
 ## Branding
 
 Optional, on `/identity/authorize` and `/identity/bridge`. Delegate stores
@@ -334,19 +454,18 @@ only. Delegate's name stays in the footer and the email sender.
 | `brand_font` | `system`, `sans`, `serif`, `rounded`, `mono`, or a Google Fonts family name: letters, digits, and spaces, up to 40 characters (`IBM Plex Sans`). A family loads from `fonts.googleapis.com` at weights 400, 600, and 700, with the system font as fallback. Default `system`. |
 | `brand_google` | `standard`, `brand`, or `skip`. See below. Default `standard`. |
 
-`brand_google` sets the Google button on the sign-in screen:
+`brand_google` sets the Google button's look on the Provider Selector:
 
 - `standard`: Google's white "Sign in with Google" button.
 - `brand`: the button takes `brand_color` and reads "Continue with
   Google", so it looks like the next step after the site's own Log in
   button rather than a second sign-in.
-- `skip`: no button when Delegate can go to Google by itself: a full-page
-  sign-in (`/identity/authorize`, no popup), Google the only method (no
-  `login_level=2`), no `prompt=consent`, and no signed-in Continue. Anywhere
-  else it acts as `brand`. A popup always needs the click: a browser blocks
-  a window opened without one, and Google cannot run inside the popup
-  (Google's Cross-Origin-Opener-Policy cuts it off from the site). If the
-  person comes back from Google without signing in, that tab shows the
+- `skip`: accepted; it does nothing extra. One provider already opens
+  itself on a full-page login (see [When a Delegate screen appears](#when-a-delegate-screen-appears)).
+  A popup still shows the button: a browser blocks a window opened without
+  a click, and the provider cannot run inside the popup (its
+  Cross-Origin-Opener-Policy cuts it off from the site). If the person
+  comes back from the provider without signing in, that tab shows the
   button for the next 10 minutes instead of sending them back.
 
 Values that break a rule are ignored. A Domain that does not pass the
@@ -363,6 +482,7 @@ Typical choices:
 | Level 0–1 (a name, a newsletter signup) and wants the fewest steps for people without Google | `min_level=1&login_level=2` |
 | Level 2: an email address the person really receives | `min_level=2&login_level=2` |
 | Level 3–4: a trusted provider (members' areas, admin, payments) | `min_level=3` (no `login_level`) |
+| Facebook as well as Google | `login_providers=google,facebook` (works with any `login_level`) |
 | No preference | nothing: Google only |
 
 `@engine9/id`: `createEngine9Id({ loginLevel: 2 })` or `mount({ loginLevel: 2 })`
@@ -372,7 +492,7 @@ for every login, `requestIdentity({ …, loginLevel: 2 })` for one request, or
 
 ## Bridge (popup)
 
-`GET /identity/bridge?domain=<host[:port]>&min_level=&prompt=&login_level=&brand_name=&brand_color=&brand_logo=&brand_wordmark=&brand_background=&brand_text=&brand_card=&brand_card_text=&brand_font=&brand_google=&expires_in=&nonce=&state=`
+`GET /identity/bridge?domain=<host[:port]>&min_level=&prompt=&login_level=&login_providers=&brand_name=&brand_color=&brand_logo=&brand_wordmark=&brand_background=&brand_text=&brand_card=&brand_card_text=&brand_font=&brand_google=&expires_in=&nonce=&state=`
 
 Top-level popup so SameSite=Lax cookies apply. Same consent logic as authorize.
 On success, `postMessage` to `window.opener`:

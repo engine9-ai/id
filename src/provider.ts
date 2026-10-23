@@ -4,6 +4,7 @@ import type {
   FetchImpl,
   Identity,
   LoginLevel,
+  LoginProviders,
   Prompt,
   ResponseMode,
   SignInBrand,
@@ -30,7 +31,9 @@ export interface BuildAuthorizeOptions {
   optionalFields?: string[];
   prompt?: Prompt;
   loginLevel?: LoginLevel;
+  loginProviders?: LoginProviders;
   brand?: SignInBrand;
+  loginHint?: string;
   /** Identity Token lifetime in seconds (`expires_in`). */
   expiresIn?: number;
   nonce?: string;
@@ -46,7 +49,9 @@ export interface BuildBridgeOptions {
   optionalFields?: string[];
   prompt?: Prompt;
   loginLevel?: LoginLevel;
+  loginProviders?: LoginProviders;
   brand?: SignInBrand;
+  loginHint?: string;
   /** Identity Token lifetime in seconds (`expires_in`). */
   expiresIn?: number;
   nonce?: string;
@@ -120,7 +125,9 @@ export function createDelegateProvider(
         optionalFields: opts.optionalFields,
         prompt: opts.prompt,
         loginLevel: opts.loginLevel,
+        loginProviders: opts.loginProviders,
         brand: opts.brand,
+        loginHint: opts.loginHint,
         expiresIn: opts.expiresIn,
         nonce: opts.nonce,
         state: opts.state,
@@ -140,7 +147,9 @@ export function createDelegateProvider(
         optionalFields: opts.optionalFields,
         prompt: opts.prompt,
         loginLevel: opts.loginLevel,
+        loginProviders: opts.loginProviders,
         brand: opts.brand,
+        loginHint: opts.loginHint,
         expiresIn: opts.expiresIn,
         nonce: opts.nonce,
         state: opts.state,

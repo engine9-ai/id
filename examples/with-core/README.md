@@ -50,7 +50,7 @@ The widget's hooks use these. Call them yourself for reads after login, or
 when a page builds its own controls instead of the widget:
 
 ```js
-await id.requestIdentity({ minLevel: 1, mode: 'popup' }); // what the widget's Login does
+await id.requestIdentity({ minLevel: 1, mode: 'redirect' }); // what the widget's Login does
 const { session, token } = await id.core.login();
 const me = await id.core.me();
 await id.core.changeRole('<segment-uuid>');

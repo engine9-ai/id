@@ -133,17 +133,72 @@ The login lasts until the Identity Token expires (about eight hours) and carries
 across tabs. Logging in again renews it without another chooser because the
 Grant is remembered.
 
+## The simple button
+
+The shortest sign-in for a new visitor is your page, then Google, then back.
+Use a full-page login that skips Delegate's own Google button, and say on your
+button what it shares:
+
+```html
+<button id="login">Continue with Google (shares your email with this site)</button>
+```
+
+```js
+import { createEngine9Id } from '@engine9/id';
+
+const id = createEngine9Id({
+  brand: { name: 'My Site', color: '#7a1fa2' },
+  core: { apiUrl: '/api', publicApiKey: 'e9publickey_…' }, // optional
+});
+
+// On every page load: finish a login that came back, log in to core, run your code.
+await id.finishSignIn({ onSignedIn: ({ identity, session }) => showAccount(identity, session) });
+
+// On click: Delegate sends the visitor to Google, then back to this page.
+document.getElementById('login').addEventListener('click', () =>
+  id.signIn({ fields: ['email'] }),
+);
+```
+
+`signIn()` is `requestIdentity({ mode: 'redirect' })` and returns at once,
+without redirecting, when the visitor is already signed in at that Level.
+Delegate opens a single provider by itself, then shows its share screen on
+a first visit so the visitor can pick which email and fields to send.
+`finishSignIn()` is `handleCallback()`, then `core.login()` when `core` is
+set, then your `onSignedIn`. It resolves `null` when no login came back;
+`onCoreError` keeps the visitor signed in when core refuses.
+
+Or let the widget be the button: `loginWidget({ id, fields: ['email'] })`
+makes **Login** a single button (redirect is the default). The dialog opens
+once the visitor is signed in, including after a redirect return if they
+still need to pick a role.
+
+The Provider Selector stays on screen when there is more than one provider,
+`loginLevel: 2` (the email-link field), or a popup (a browser blocks a
+window opened without a click). `loginHint: 'alex@example.com'` hands a
+known address to Google so it can skip its account chooser.
+
+When Delegate will show its provider screen, the client logs why on the
+console (`[engine9-id] Delegate will show its provider screen because this
+is a popup…`), on `localhost` automatically and elsewhere with `warn: true`
+or `debug: true`. Every reason a Delegate screen can still appear is in
+[docs/protocol.md](./docs/protocol.md#when-a-delegate-screen-appears).
+
+Server-side sites using `@engine9/core` can skip the JavaScript: its
+`/api/auth/start` link does the same thing with one `<a href>`.
+
 ## The login widget
 
 The login widget is the main way visitors interact with Delegate: one button
 and one dialog for everything. The button shows the logged-in email and
 role, or **Login**. Clicking it opens a dialog on your page that:
 
-1. **Logs in with Google** (Delegate's popup; with `loginLevel: 2`, Google or
-   an emailed link).
-2. **Switches email**: the address your site receives (Delegate's address
-   chooser, `prompt=select`, in the same popup). The visitor can also add an
-   address or use a different Google account there.
+1. **Logs in** (a full-page trip to Delegate by default; `mode: 'popup'`
+   keeps the dialog and opens a Delegate window. With `loginLevel: 2`,
+   Google or an emailed link).
+2. **Switches email**: the address your site receives (Delegate's share
+   screen, `prompt=select`, in a popup). The visitor can also add an
+   address or use a different account there.
 3. **Changes role** on your site, when you give it roles.
 4. **Logs out**, on your site only or on Delegate too (a small popup, no
    redirect).
@@ -192,6 +247,7 @@ section. Page-local roles like these are
 | `id` | a new client (`local` storage) | The client from `mount()` or `createEngine9Id()` |
 | `target` | `[data-e9-login-widget]`, else `<body>` | Element or selector for the button |
 | `minLevel`, `maxLevel`, `fields`, `optionalFields`, `loginLevel` | Level 1, Delegate's fields | What every login and email switch asks Delegate for |
+| `mode` | `'redirect'` | Signed-out Login is a full-page trip to Delegate. `mode: 'popup'` opens the dialog first. See [The simple button](#the-simple-button) |
 | `branding` | `true` | Delegate mark in the dialog and "Sign-in by Delegate" footer |
 | `siteName` | `location.hostname` | Name in the dialog title |
 | `labels` | English | Any button or title text. `{site}` in `title` / `signedInTitle` is replaced |
@@ -275,6 +331,7 @@ reading", "Confirm your email to comment"):
 | `data-e9-optional-fields="phone"`      | Optional fields. Declining one does not drop the visitor to Level 0          |
 | `data-e9-prompt="select"`              | Always show the field form again                                              |
 | `data-e9-login-level="2"`              | Delegate's sign-in screen also offers an emailed sign-in link (default: Google only). See [Sign-in screens](#sign-in-screens-google-only-or-google-plus-an-email-link) |
+| `data-e9-login-providers="google,facebook"` | Delegate's sign-in screen also offers Facebook (default: Google only). See [Sign-in providers](#sign-in-providers-google-and-facebook) |
 | `data-e9-logout`                       | Click forgets the identity on this website                                   |
 | `data-e9-logout="delegate"`            | Also signs the visitor out of delegate itself, then returns to this page     |
 | `data-e9-change-delegate`              | "Change your Delegate information": reopens delegate to pick another email address or change what is shared. Value is the minimum Level (default 1) |
@@ -442,6 +499,7 @@ Every option is optional.
 | `mode`        | `'popup'`                      | `'redirect'` sends the whole page to delegate and back           |
 | `prompt`      | —                              | `'select'` always shows the chooser                              |
 | `loginLevel`  | `3` (Google only)              | `2` also offers an emailed sign-in link. See [Sign-in screens](#sign-in-screens-google-only-or-google-plus-an-email-link) |
+| `loginProviders` | `['google']`                | `['google', 'facebook']` also offers Facebook. See [Sign-in providers](#sign-in-providers-google-and-facebook) |
 | `brand`       | your Domain, Delegate blue     | `{ name, color, logo, wordmark, background, text, card, cardText, font, google }` on delegate's sign-in page and email. See [Branding the sign-in](#branding-the-sign-in) |
 | `root`        | `document`                     | Where to look for `data-e9-*` elements                           |
 | `onError`     | `console.warn`                 | Called when login fails or a redirect returns `error=`           |
@@ -524,6 +582,39 @@ What `loginLevel` does **not** do:
 On the wire this is `login_level=2` on `/identity/authorize` and
 `/identity/bridge` ([protocol](./docs/protocol.md#sign-in-screen-login_level)).
 Server-side sites using `@engine9/core` pass `loginLevel: 2` to
+`auth.identityUrl()`.
+
+## Sign-in providers: Google and Facebook
+
+Delegate's sign-in screen offers Google by default. Ask for Facebook too:
+
+```js
+const id = createEngine9Id({ loginProviders: ['google', 'facebook'] });
+```
+
+```html
+<button data-e9-login data-e9-login-providers="google,facebook">Log in</button>
+```
+
+```js
+await id.requestIdentity({ minLevel: 1, loginProviders: ['google', 'facebook'] });
+```
+
+- Delegate's operator decides which providers exist. If Facebook is not
+  enabled there, the screen shows Google and nothing breaks.
+- A Facebook sign-in counts as Level 3, like Google. Its email is not marked
+  verified, and Facebook can return no email at all, so ask for `email` as
+  optional if you can live without it.
+- The token's `auth.provider` is `google.com` or `facebook.com`. If your
+  server checks it, accept both.
+- One person is one User per email address. If a Facebook sign-in's email
+  already belongs to a Google User, Delegate asks the person to continue with
+  Google once; after that both buttons reach the same User.
+- One provider on a full-page login opens that provider by itself.
+
+On the wire this is `login_providers=google,facebook`
+([protocol](./docs/protocol.md#sign-in-providers-login_providers)).
+Server-side sites using `@engine9/core` pass `loginProviders` to
 `auth.identityUrl()`.
 
 ## Branding the sign-in
@@ -703,14 +794,16 @@ Guides: [with-core](./docs/with-core.md), [declared roles](./docs/declared-roles
 
 ### Full client API
 
-`createEngine9Id({ provider?, delegateUrl?, domain?, storage?, core?, fetchImpl?, loginLevel?, brand? })`
+`createEngine9Id({ provider?, delegateUrl?, domain?, storage?, core?, fetchImpl?, loginLevel?, loginProviders?, brand?, expiresIn?, warn?, debug? })`
 
 | Method | What it does |
 | ------ | ------------ |
 | `getIdentity()` | Verified, unexpired token payload, or `null` |
 | `getDomainUnid()` | `identity.sub`, else the last stored Domain UNID |
-| `requestIdentity({ minLevel, maxLevel?, fields?, prompt?, loginLevel?, brand?, expiresIn?, mode, returnTo?, responseMode? })` | Start login. `popup` opens `/identity/bridge`; `redirect` navigates to `/identity/authorize`. `loginLevel: 2` adds the email sign-in link. `expiresIn` sets Identity Token lifetime in seconds (delegate default 28800 / 8 hours, max 30 days) |
+| `requestIdentity({ minLevel, maxLevel?, fields?, prompt?, loginLevel?, brand?, loginHint?, expiresIn?, mode, returnTo?, responseMode? })` | Start login. `popup` opens `/identity/bridge`; `redirect` navigates to `/identity/authorize`. `loginLevel: 2` adds the email sign-in link. `expiresIn` sets Identity Token lifetime in seconds (delegate default 28800 / 8 hours, max 30 days) |
 | `handleCallback()` | Read `#delegate_token` or `?delegate_token` on return, verify, store, clean the URL |
+| `signIn({ minLevel?, fields?, loginHint?, brand?, returnTo?, … })` | A full-page login. Returns the stored identity, without redirecting, when already signed in at `minLevel`. See [The simple button](#the-simple-button) |
+| `finishSignIn({ onSignedIn?, onCoreError? })` | On page load: finish a returning login, run `core.login()` when `core` is set, then `onSignedIn({ identity, session })`. `null` when nothing came back |
 | `ensureLevel(n, opts?)` | No-op if already at `n`; otherwise try silently, then interactively |
 | `changeDelegateInfo(opts?)` | "Change your Delegate information": `prompt=select` with the current Grant's fields, so the visitor can pick another email address. Options as `requestIdentity`, all optional (default Level 1, popup) |
 | `gate({ minLevel?, maxLevel?, twoFactor?, onAllow?, onBlock?, onChange? })` | Soft content hook; returns unsubscribe |
