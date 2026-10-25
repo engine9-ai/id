@@ -14,7 +14,8 @@ The browser cannot learn core `person_id` or Roles.
 ## What a core Site server can trust
 
 The same JWT, verified the same way (or via `jose` + JWKS). Plus warehouse
-facts (`person_id`, Roles) after mapping the Domain UNID (`sub`).
+facts (`person_id`, Roles) after core finds the person by the confirmed email
+(or, with none, the Domain UNID `sub`).
 
 ## Threats and mitigations
 

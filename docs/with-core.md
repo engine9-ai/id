@@ -75,9 +75,12 @@ roles whose `requiredAuth.minLevel` the visitor does not meet.
 email address. Delegate remembers which address a person shares with your
 Domain, so logging in again returns the same one. Switch email reopens the
 share page so they can pick another. The new token goes through `onLogin`,
-which calls `id.core.login()` again and re-reads roles. Picking another
-address keeps the same Domain UNID and `person_id`; a different Google
-account is a different person to core. On an access-denied message, add a
+which calls `id.core.login()` again and re-reads roles. Core finds the
+person by the confirmed address, so picking another address signs in as the
+person core knows by that address: a different person unless core already
+joined the two ([core: who is signing in](https://github.com/engine9-ai/core/blob/main/auth/README.md#who-is-signing-in-credential-identity-deduplication)).
+The Domain UNID stays the same, but core does not use it to join people. On
+an access-denied message, add a
 `data-e9-change-delegate` button (or call `widget.open()`) so the fix is one
 click away.
 
