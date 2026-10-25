@@ -429,7 +429,8 @@ the same thing in one click:
 ```
 
 From JavaScript: `id.changeDelegateInfo()`. It repeats the fields the
-current Grant asked for.
+current Grant asked for. With `storage: 'memory'` there is no saved Grant
+after a page load, so pass the same `fields` and `minLevel` you log in with.
 
 ### Example: greeting and badge
 
@@ -543,7 +544,7 @@ Leave `delegateUrl` unset to use the default, `https://delegate.network`.
 > retired and will stop working on 2026-10-30. If your page or
 > server sets `delegateUrl` (or an issuer, a CSP entry, or a link) to the old
 > host, change it to `https://delegate.network`, or delete `delegateUrl` to
-> use the default. Update `id.iife.js` to 1.13.0 and change any server that
+> use the default. Update `id.iife.js` to 1.13.2 and change any server that
 > verifies the token in the same deploy. The exact list of places is in
 > [CHANGELOG.md](CHANGELOG.md#1130-delegate-moves-to-delegatenetwork).
 <!-- END REMOVE-AFTER 2026-11-06 -->

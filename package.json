@@ -1,6 +1,6 @@
 {
   "name": "@engine9/id",
-  "version": "1.13.1",
+  "version": "1.13.2",
   "publishConfig": {
     "access": "public"
   },
@@ -69,6 +69,8 @@
   ],
   "scripts": {
     "build": "tsup && tsup --config tsup.iife.ts",
+    "check:dist": "node scripts/checkDist.mjs",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build && npm run check:dist",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"

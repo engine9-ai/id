@@ -4,8 +4,27 @@ This file lists what changed in each release, what was retired, and what a
 site should change. The current way to do things is in [README.md](README.md).
 
 Only releases from the last week are listed. Pin the version you install
-(`@engine9/id@1.13.1`); a copy of `id.iife.js` you saved earlier is the
+(`@engine9/id@1.13.2`); a copy of `id.iife.js` you saved earlier is the
 version it was saved from.
+
+## 1.13.2: The built files use delegate.network
+
+1.13.0 and 1.13.1 were published with `dist/` built before the host change.
+Their `dist/index.js`, `dist/content.js`, `dist/widget.js`, and
+`dist/id.iife.js` still default to `https://delegate.engine9.ai`, although
+the source and these notes say `https://delegate.network`. 1.13.2 is the same
+source, built correctly. Publishing now rebuilds `dist/` and refuses to
+publish one whose default host differs from the source.
+
+| Where | Find | Change to |
+| --- | --- | --- |
+| `package.json` | `"@engine9/id": "1.13.0"` or `"1.13.1"` | `"1.13.2"` |
+| Script tag or CDN pin | `@engine9/id@1.13.0/dist/id.iife.js` or `@1.13.1/` | `@engine9/id@1.13.2/dist/id.iife.js` |
+| A saved copy of `id.iife.js` or `dist/` from 1.13.0 or 1.13.1 | It defaults to the old host | Replace it with the 1.13.2 file |
+| Anything above, if you cannot upgrade before 2026-10-30 | No `delegateUrl` | `delegateUrl: 'https://delegate.network'` |
+
+A site that already passes `delegateUrl: 'https://delegate.network'` works on
+1.13.0 and 1.13.1 and needs no change.
 
 ## 1.13.1: Retirement date
 
@@ -25,7 +44,8 @@ retired on **2026-10-30**. Everything in 1.13.0 below still applies.
 ### What to change in your site
 
 A site that does not set `delegateUrl` gets the new host by upgrading to
-1.13.0. A site that names the old host anywhere must change that text. Find
+1.13.2 (1.13.0 and 1.13.1 shipped built files with the old default; see
+1.13.2). A site that names the old host anywhere must change that text. Find
 every place:
 
 ```bash
@@ -38,8 +58,8 @@ rg -n "delegate\.engine9\.ai" . -g '!node_modules' -g '!dist'
 | `loginWidget({ ... })`, `mount({ ... })` | `delegateUrl: 'https://delegate.engine9.ai'` | Same |
 | `createDelegateProvider({ delegateUrl })`, `requestIdentity`, `bridgeUrl`, `authorizeUrl`, `logoutUrl` | `delegateUrl` naming the old host | Same |
 | `window.engine9Id` (script tag) | `engine9Id.createEngine9Id({ delegateUrl: 'https://delegate.engine9.ai' })` | Same |
-| Script tag or CDN pin | `https://unpkg.com/@engine9/id@1.12.1/dist/id.iife.js` (any version below 1.13.0) | `https://unpkg.com/@engine9/id@1.13.0/dist/id.iife.js` |
-| A saved copy of `id.iife.js` or `dist/` in your repo (a vendored file) | A copy older than 1.13.0 hard-codes the old host as its default | Replace it with the 1.13.0 file. If you cannot yet, pass `delegateUrl: 'https://delegate.network'` |
+| Script tag or CDN pin | `https://unpkg.com/@engine9/id@1.12.1/dist/id.iife.js` (any version below 1.13.0) | `https://unpkg.com/@engine9/id@1.13.2/dist/id.iife.js` |
+| A saved copy of `id.iife.js` or `dist/` in your repo (a vendored file) | A copy older than 1.13.2 hard-codes the old host as its default | Replace it with the 1.13.2 file. If you cannot yet, pass `delegateUrl: 'https://delegate.network'` |
 | Your own `postMessage` origin check | `event.origin === 'https://delegate.engine9.ai'` | `'https://delegate.network'` |
 | Hard-coded links and fetches | `https://delegate.engine9.ai/identity/authorize`, `/identity/bridge`, `/identity/logout`, `/identity/logout/bridge`, `/user`, `/.well-known/jwks.json`, `/.well-known/delegate-configuration` | Same paths on `https://delegate.network` |
 | A server (any language) that verifies the token your browser sends it | `iss` expected to be `https://delegate.engine9.ai`, JWKS from that host | `iss` `https://delegate.network`, JWKS `https://delegate.network/.well-known/jwks.json`. With `@engine9/core`, see its [CHANGELOG](https://github.com/engine9-ai/core/blob/main/CHANGELOG.md) |

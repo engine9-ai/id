@@ -98,7 +98,7 @@ provider is possible later; it must return the same identity shape. See
 > **Moving to `delegate.network`.** `https://delegate.engine9.ai` is being
 > retired and will stop working on 2026-10-30. If you set
 > `delegateUrl` to it, change it to `https://delegate.network` or delete it,
-> and use `@engine9/id` 1.13.0. See
+> and use `@engine9/id` 1.13.2. See
 > [CHANGELOG.md](../CHANGELOG.md#1130-delegate-moves-to-delegatenetwork).
 <!-- END REMOVE-AFTER 2026-11-06 -->
 
