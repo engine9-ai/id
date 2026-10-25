@@ -444,6 +444,11 @@ none of it: it is read from each request and carried to `/login`. The
 sign-in email takes the name, color, and logo; the rest style `/login`
 only. Delegate's name stays in the footer and the email sender.
 
+The consent page (choosing which fields to share) is never branded: it keeps
+Delegate's neutral look whatever `brand_*` a request carries. This is an
+explicit decision, so the page where a person decides what to share looks
+like Delegate and not like the Domain asking.
+
 | Param | Rule |
 | --- | --- |
 | `brand_name` | Display name, 1–60 characters, no `://` or `www.`. The Domain is always shown under it. Default: the Domain. |
