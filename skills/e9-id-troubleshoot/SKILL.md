@@ -3,6 +3,7 @@ name: e9-id-troubleshoot
 description: >-
   Diagnose @engine9/id and delegate identity failures: popup blocked,
   interaction_required, invalid_domain, state_mismatch ("link expired"),
+  site_key_rejected (core refused the public key),
   JWKS fetch, SameSite, Bot Fight on localhost, fragment vs query tokens.
   Use when login redirect fails or identity tokens will not verify.
 ---
@@ -36,6 +37,16 @@ Retry without `prompt=none` so the chooser or `/login` can run.
 
 Evidence after interaction is still below `min_level` (e.g. asked for 4 but
 the User has no MFA). Lower `min_level` or send them to step-up (Google MFA).
+
+## `site_key_rejected`
+
+Delegate login worked, then `core.login()` (or any core call) got a 401
+with `kind: 'api_key'`: core's `api_key` table has no active row for the
+`publicApiKey` the page sends. The console shows it once, even when the
+site catches the error. `err.details.reason` is `unknown_key` (no row),
+`inactive_key` (rotated), `expired_key`, or `missing_key`. Signing in again
+never fixes it. Fix the site's keys: core's `docs/deploy.md`, "When the API
+answers `unauthorized`".
 
 ## `state_mismatch` / "my link expired"
 

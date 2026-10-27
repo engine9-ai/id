@@ -19,7 +19,13 @@ export {
   parseDelegateCallback,
 } from './url';
 export { listenForDelegateIdentity, openIdentityPopup, openLogoutPopup } from './popup';
-export { DelegateIdentityError, isStateMismatch, STATE_MISMATCH } from './errors';
+export {
+  DelegateIdentityError,
+  isSiteKeyRejected,
+  isStateMismatch,
+  SITE_KEY_REJECTED,
+  STATE_MISMATCH,
+} from './errors';
 export { DEFAULT_DELEGATE_URL } from './types';
 export {
   meetsRequiredAuth,

@@ -1,4 +1,4 @@
-import { DelegateIdentityError } from './errors';
+import { DelegateIdentityError, SITE_KEY_REJECTED } from './errors';
 import type {
   CoreClient,
   CoreConfig,
@@ -26,6 +26,37 @@ function asJson(res: Response): Promise<unknown> {
   const type = res.headers.get('content-type') ?? '';
   if (type.includes('application/json')) return res.json();
   return res.text();
+}
+
+/* `kind` is core 1.17.0 and later; earlier core sends only this error text. */
+const KEY_ERROR_TEXT = /^unauthorized: (missing_key|unknown_key|inactive_key|expired_key)$/;
+
+/**
+ * The error for a failed core call. A refused public key is `site_key_rejected`
+ * on every route, so a Site can tell its own setup apart from the visitor.
+ */
+function coreError(
+  res: Response,
+  body: unknown,
+  code: string,
+  fallbackMessage: string,
+): DelegateIdentityError {
+  const rec = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
+  const text = typeof rec.error === 'string' ? rec.error : '';
+  const legacy = res.status === 401 ? KEY_ERROR_TEXT.exec(text) : null;
+  const reason = typeof rec.reason === 'string' ? rec.reason : legacy?.[1];
+  const hint = typeof rec.hint === 'string' ? rec.hint : undefined;
+  const details: Record<string, unknown> = { status: res.status };
+  if (reason) details.reason = reason;
+  if (hint) details.hint = hint;
+  if (rec.kind === 'api_key' || legacy) {
+    return new DelegateIdentityError(
+      SITE_KEY_REJECTED,
+      `@engine9/core refused this site's public API key (${reason ?? 'unauthorized'}). This is a site setup problem, not a sign-in problem.${hint ? ` ${hint}` : ''}`,
+      details,
+    );
+  }
+  return new DelegateIdentityError(code, text || fallbackMessage, details);
 }
 
 function loginResult(body: unknown, fallbackToken?: string): CoreLoginResult {
@@ -80,6 +111,17 @@ export function createCoreClient(opts: CreateCoreClientOptions): CoreClient {
     return fetchImpl(url, { ...init, headers });
   };
 
+  // A refused key fails every call the same way: say so once, even when the Site catches it.
+  let keyReported = false;
+  const fail = (res: Response, body: unknown, code: string, message: string): DelegateIdentityError => {
+    const error = coreError(res, body, code, message);
+    if (error.code === SITE_KEY_REJECTED && !keyReported && typeof console !== 'undefined') {
+      keyReported = true;
+      console.error('[engine9/id]', error.message);
+    }
+    return error;
+  };
+
   return {
     async login(): Promise<CoreLoginResult> {
       const delegateToken = opts.getDelegateToken();
@@ -95,11 +137,7 @@ export function createCoreClient(opts: CreateCoreClientOptions): CoreClient {
       });
       const body = await asJson(res);
       if (!res.ok) {
-        const message =
-          body && typeof body === 'object' && 'error' in body
-            ? String((body as { error: unknown }).error)
-            : `core login failed (${res.status})`;
-        throw new DelegateIdentityError('invalid_request', message);
+        throw fail(res, body, 'invalid_request', `core login failed (${res.status})`);
       }
       const result = loginResult(body);
       opts.setSessionToken?.(result.token);
@@ -110,7 +148,7 @@ export function createCoreClient(opts: CreateCoreClientOptions): CoreClient {
       const res = await request('/auth/me', { method: 'GET' });
       const body = await asJson(res);
       if (!res.ok) {
-        throw new DelegateIdentityError('login_required', 'core /auth/me failed');
+        throw fail(res, body, 'login_required', 'core /auth/me failed');
       }
       return (body && typeof body === 'object' ? body : {}) as CoreSession;
     },
@@ -122,7 +160,7 @@ export function createCoreClient(opts: CreateCoreClientOptions): CoreClient {
       });
       const body = await asJson(res);
       if (!res.ok) {
-        throw new DelegateIdentityError('access_denied', 'core changeRole failed');
+        throw fail(res, body, 'access_denied', 'core changeRole failed');
       }
       const result = loginResult(body, sessionToken() ?? undefined);
       if (result.token) opts.setSessionToken?.(result.token);

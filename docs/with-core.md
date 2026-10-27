@@ -64,7 +64,10 @@ always has the current token; its Role section calls `changeRole`:
   // Returning visitor: show the role core already has.
   id.ready.then(() => id.getIdentity() && id.core.me())
     .then((session) => session && widget.update({ role: session.roles?.[0] ?? null }))
-    .catch(() => {});
+    .catch((err) => {
+      // Not signed in to core yet is normal. A refused site key is a setup problem: keep it visible.
+      if (engine9Id.isSiteKeyRejected(err)) throw err;
+    });
 </script>
 ```
 

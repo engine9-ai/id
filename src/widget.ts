@@ -12,7 +12,7 @@
  */
 
 import { createEngine9Id } from './client';
-import { DelegateIdentityError, insecureDomainMessage, isStateMismatch } from './errors';
+import { DelegateIdentityError, insecureDomainMessage, isSiteKeyRejected, isStateMismatch } from './errors';
 import { describeLevel } from './levels';
 import { meetsRequiredAuth, type DeclaredRoleRegistry, type RequiredAuth } from './roles';
 import type { Engine9Id, Engine9IdConfig, Identity, IdentityMode } from './types';
@@ -560,6 +560,7 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
     if (code === 'level_unavailable') return `Delegate did not share what ${siteName} needs, so you are not logged in.`;
     if (code === 'invalid_domain') return `Delegate does not accept ${siteName} yet. The site operator needs to register it.`;
     if (isStateMismatch(error)) return 'That sign-in belonged to an earlier attempt. Log in again.';
+    if (isSiteKeyRejected(error)) return `${siteName} could not finish logging you in because of a problem with its setup. Logging in again will not help; the site operator needs to fix it.`;
     return error instanceof Error ? error.message : String(error);
   };
 

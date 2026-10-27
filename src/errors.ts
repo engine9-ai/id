@@ -25,6 +25,20 @@ export function isStateMismatch(error: unknown): boolean {
   return error instanceof DelegateIdentityError && error.code === STATE_MISMATCH;
 }
 
+/**
+ * Error code when `@engine9/core` refused the Site's public API key (a 401
+ * with `kind: 'api_key'`). The Site is misconfigured: its database has no
+ * active row for the key the page sends. Signing in again never fixes it.
+ * `details` carries `status`, `reason` (`unknown_key`, `inactive_key`, …),
+ * and core's `hint`.
+ */
+export const SITE_KEY_REJECTED = 'site_key_rejected';
+
+/** True for a `site_key_rejected` error (see `SITE_KEY_REJECTED`). */
+export function isSiteKeyRejected(error: unknown): boolean {
+  return error instanceof DelegateIdentityError && error.code === SITE_KEY_REJECTED;
+}
+
 const DELEGATE_ERROR_TEXT: Record<string, string> = {
   interaction_required:
     'Delegate needs the User to sign in or choose what to share, and prompt=none does not allow that.',

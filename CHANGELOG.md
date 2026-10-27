@@ -4,8 +4,42 @@ This file lists what changed in each release, what was retired, and what a
 site should change. The current way to do things is in [README.md](README.md).
 
 Only releases from the last week are listed. Pin the version you install
-(`@engine9/id@1.13.2`); a copy of `id.iife.js` you saved earlier is the
+(`@engine9/id@1.14.0`); a copy of `id.iife.js` you saved earlier is the
 version it was saved from.
+
+## 1.14.0: A refused site key is `site_key_rejected`
+
+When `@engine9/core` refuses the Site's public API key, `core.login()`,
+`core.me()`, and `core.changeRole()` used to throw a generic error
+(`invalid_request`, `login_required`, `access_denied`). That looks like a
+visitor problem. A Site that caught it showed nothing, and login appeared to
+work while core never created a session.
+
+Now:
+
+- A refused key throws `DelegateIdentityError` with code `site_key_rejected`
+  (`SITE_KEY_REJECTED`, `isSiteKeyRejected(err)`). `err.details` has
+  `status`, `reason` (`unknown_key`, `inactive_key`, `expired_key`,
+  `missing_key`), and core's `hint`. It works with every core version: core
+  1.17.0 marks the 401 `kind: 'api_key'`, and the bare
+  `unauthorized: <reason>` text from earlier core is recognized too.
+- The client logs it once with `console.error('[engine9/id]', …)`, even when
+  the Site catches the error.
+- `loginWidget()` tells the visitor it is a problem with the Site's setup and
+  that logging in again will not help.
+- Other core failures keep their codes. Their message is now core's `error`
+  text, and `details` carries `status` and `reason`.
+
+| Where | Find | Change to |
+| --- | --- | --- |
+| `package.json` | `"@engine9/id": "1.13.2"` | `"1.14.0"` |
+| Script tag or CDN pin | `@engine9/id@1.13.2/dist/id.iife.js` | `@engine9/id@1.14.0/dist/id.iife.js` |
+| `onCoreError`, or a `catch` around `id.core.*` | `() => {}` | Show the error when `isSiteKeyRejected(err)` (`engine9Id.isSiteKeyRejected` with the script tag) |
+| Code that checks `err.code === 'invalid_request'` after `core.login()` to mean "bad key" | — | `isSiteKeyRejected(err)` |
+| Code that matched the fixed messages `core /auth/me failed` or `core changeRole failed` | — | Match `err.code` instead. The message is now core's |
+
+The fix for a refused key is on the Site: see
+[When the API answers `unauthorized`](https://github.com/engine9-ai/core/blob/main/docs/deploy.md#when-the-api-answers-unauthorized).
 
 ## 1.13.2: The built files use delegate.network
 

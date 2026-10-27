@@ -169,7 +169,9 @@ Delegate opens a single provider by itself, then shows its share screen on
 a first visit so the visitor can pick which email and fields to send.
 `finishSignIn()` is `handleCallback()`, then `core.login()` when `core` is
 set, then your `onSignedIn`. It resolves `null` when no login came back;
-`onCoreError` keeps the visitor signed in when core refuses.
+`onCoreError` keeps the visitor signed in when core refuses. If you catch
+that error, show it: a `site_key_rejected` error (`isSiteKeyRejected(err)`)
+means core refused the site's public key, which no visitor can fix.
 
 Or let the widget be the button: `loginWidget({ id, fields: ['email'] })`
 makes **Login** a single button (redirect is the default). The dialog opens
@@ -750,6 +752,7 @@ same Identity Token, maps it to a `person_id`, and enforces roles with a real
 | Content flashes before hiding                             | Add `hidden` to gated elements in the HTML                                                    |
 | Visitor is logged out after an hour                       | Tokens expire. **Login** → **Log in with Google** renews silently; or call `id.ensureLevel(1)` on a gesture |
 | Visitor came back from Delegate and is still logged out, with no error | The return answered a request this browser does not have (`state_mismatch`): another tab, an older popup, or an email link opened in a different browser. `mount()` and the widget ignore it on purpose. **Login** again; it is silent when they are signed in to Delegate. See [A login that answers another request](#a-login-that-answers-another-request) |
+| Delegate login works, but the site never knows who is signed in (`site_key_rejected`, console: `@engine9/core refused this site's public API key`) | Core's database has no active row for the `publicApiKey` the page sends. A site setup problem, not a visitor one: see [When the API answers `unauthorized`](https://github.com/engine9-ai/core/blob/main/docs/deploy.md#when-the-api-answers-unauthorized). `err.details.reason` says which (`unknown_key`, `inactive_key`, …) |
 | Logged in on one page, not another                        | Every page needs the script, `mount()`, and `loginWidget()`. Storage is per Domain, so `www` and non-`www` differ |
 | Login button does not appear                              | `loginWidget()` found no `[data-e9-login-widget]` and went to the end of `<body>`. Add the element, or pass `target` |
 | Works locally, not in production                          | Production Domain not registered, or the page is server-rendered and `mount()` never ran in the browser |
