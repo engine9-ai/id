@@ -256,7 +256,8 @@ describe('bindContent', () => {
     const root = html(
       PAGE +
         '<button id="change" data-e9-change-delegate hidden>Change your Delegate information</button>' +
-        '<button id="change3" data-e9-change-delegate="3" data-e9-fields="email">Change</button>',
+        '<button id="change3" data-e9-change-delegate="3" data-e9-fields="email">Change</button>' +
+        '<button id="denied" data-e9-change-delegate data-e9-reason="access_denied">Use another address</button>',
     );
     const keys = await createTestKeys();
     const token = await signIdentityToken(keys, { sub: `${DOMAIN}:changer`, level: 3 });
@@ -287,6 +288,8 @@ describe('bindContent', () => {
     expect(change).toHaveBeenLastCalledWith(
       expect.objectContaining({ minLevel: 3, fields: ['email'] }),
     );
+    q(root, '#denied').click();
+    expect(change).toHaveBeenLastCalledWith(expect.objectContaining({ reason: 'access_denied' }));
 
     id.logout();
     expect(q(root, '#change').hidden).toBe(true);

@@ -7,6 +7,8 @@ export const STORAGE_KEYS = {
   nonce: 'delegate_nonce',
   state: 'delegate_state',
   coreSession: 'engine9_core_session',
+  /** `state` of the request behind the stored Identity Token; a cookie login sends it to core. */
+  loginState: 'delegate_login_state',
 } as const;
 
 export interface KeyValueStore {

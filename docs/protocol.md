@@ -192,6 +192,12 @@ Query:
   `consent` always show the consent page, even when the Grant already
   covers the request (see [Change your Delegate information](#change-your-delegate-information)).
   `login` sends a signed-out browser to sign in first.
+- `reason` — optional. Why the Domain sends a signed-in person back. The
+  only value is `access_denied`: the Domain signed them in but did not let
+  them in. It implies `prompt=select`, and the consent page opens with a
+  notice in Delegate's own words that the Domain did not let them in with
+  the address they shared. `prompt=none` ignores it. Any other value is
+  ignored. Delegate never shows text the Domain sends.
 - `login_level` — `2` or `3` (default `3`). Which sign-in screen a
   signed-out browser sees. `3` offers trusted providers only; `2` adds an
   email sign-in link. Ignored (treated as `3`) when `min_level` is 3 or more.
@@ -234,11 +240,14 @@ Rules:
 Behavior:
 
 1. Resolve UNID and the User session. Find the active Grant for (User, Domain).
-2. If `prompt` is `none` or unset, and the Grant already covers this request
-   (every requested field was answered before, every required field is shared
-   and has a value, and the email address it chose is still on the User) at
-   `min_level`, issue a token silently. A previously declined optional field
-   does not re-prompt.
+2. If `prompt` is `none` or unset (and no `reason` is sent), and the Grant
+   already covers this request (every requested field was answered before,
+   every required field is shared and has a value, and the email address it
+   chose is still on the User) at `min_level`, issue a token silently. A
+   previously declined optional field does not re-prompt. Exception: a
+   signed-in browser that already got two silent tokens for this Domain in
+   the last two minutes gets the consent page instead (see
+   [Silent loops](#silent-loops)). `prompt=none` is never counted.
 3. If `prompt=none` and that is not possible, redirect with
    `error=interaction_required` (or `login_required`).
 4. Otherwise show the share screen: required fields locked, optional fields
@@ -331,10 +340,28 @@ of these holds. A first visit always shows it.
 | A required field is not shared, or has no value | For example `email` is required and the User has none. |
 | The email address the Grant chose was removed | Delegate asks rather than send another one. |
 | `prompt=select` or `prompt=consent` | The Domain asked for the screen. |
+| `reason=access_denied` | The Domain did not let the person in. A notice says so. |
+| Two silent tokens for this Domain in the last two minutes (signed in, not `prompt=none`) | The Domain is sending the person round; a notice says so. See [Silent loops](#silent-loops). |
 
 `prompt=none` never shows a screen: it answers with a token or an error
 (`login_required` / `interaction_required`). A request with `min_level=0`
 and no Delegate session returns an anonymous token and shows nothing.
+
+### Silent loops
+
+A Domain that sends a signed-in person who lacks access back to sign in
+gets the same token every time: the Grant remembers the address. The person
+goes round with nothing on screen. Delegate counts silent tokens per browser
+and Domain in a short-lived cookie (`d_silent`, `Path=/identity`). After
+two in two minutes, the next request shows the consent page with a notice
+("You have been sent back to <Domain> several times in a row…"), and the
+count starts over. `prompt=none` and signed-out Level 0 tokens are not
+counted.
+
+This is a safety net. A Domain should never answer "signed in, but not
+allowed" with a sign-in redirect. Answer it with an access-denied page that
+links to authorize with `prompt=select&reason=access_denied`
+([Change your Delegate information](#change-your-delegate-information)).
 
 ## Sign-in screen (`login_level`)
 
@@ -500,7 +527,7 @@ for every login, `requestIdentity({ …, loginLevel: 2 })` for one request, or
 
 ## Bridge (popup)
 
-`GET /identity/bridge?domain=<host[:port]>&min_level=&prompt=&login_level=&login_providers=&brand_name=&brand_color=&brand_logo=&brand_wordmark=&brand_background=&brand_text=&brand_card=&brand_card_text=&brand_font=&brand_google=&expires_in=&nonce=&state=`
+`GET /identity/bridge?domain=<host[:port]>&min_level=&prompt=&reason=&login_level=&login_providers=&brand_name=&brand_color=&brand_logo=&brand_wordmark=&brand_background=&brand_text=&brand_card=&brand_card_text=&brand_font=&brand_google=&expires_in=&nonce=&state=`
 
 Top-level popup so SameSite=Lax cookies apply. Same consent logic as authorize.
 On success, `postMessage` to `window.opener`:
@@ -558,6 +585,15 @@ fields. Without it, a person with the wrong address has no way out: logging
 in again goes straight through with the remembered Grant. Put it next to Log
 out and on any access-denied message. Delegate needs no per-Domain setting
 for it.
+
+On an access-denied message, also send `reason=access_denied`. The consent
+page then opens with a notice that the Domain did not let the person in with
+the address they shared. `@engine9/id`: `id.changeDelegateInfo({ reason:
+'access_denied' })` or `data-e9-reason="access_denied"` on the
+`data-e9-change-delegate` element. `@engine9/core`: the `requireRole` 403
+links there already; elsewhere use `changeSignInUrl(path, { reason:
+'access_denied' })`, or `auth.identityUrl({ …, prompt: 'select', reason:
+'access_denied' })`.
 
 ## Fields and Grants (same-origin, User session required)
 

@@ -182,6 +182,24 @@ describe('loginWidget', () => {
     expect(id.logout).toHaveBeenCalledWith({ delegate: false, mode: 'popup' });
   });
 
+  it('runs onLoggedOut after every logout has finished, never before', async () => {
+    const id = fakeId(identity());
+    let finishLogout: () => void = () => {};
+    (id.logout as ReturnType<typeof vi.fn>).mockImplementation(
+      () => new Promise<void>((resolve) => (finishLogout = resolve)),
+    );
+    const onLoggedOut = vi.fn();
+    widget = loginWidget({ id, onLoggedOut });
+    const p = parts(widget);
+    p.trigger.click();
+    p.action('logout')!.click();
+    await settle();
+    expect(onLoggedOut).not.toHaveBeenCalled();
+    finishLogout();
+    await settle();
+    expect(onLoggedOut).toHaveBeenCalledTimes(1);
+  });
+
   it('logs out, asking whether to end the Delegate session too', async () => {
     const id = fakeId(identity());
     const onLogout = vi.fn();

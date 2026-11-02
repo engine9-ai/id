@@ -38,6 +38,8 @@ export const CONTENT_ATTRIBUTES = {
    * the minimum Level (default 1).
    */
   changeDelegate: 'data-e9-change-delegate',
+  /** On a `data-e9-change-delegate` element: `access_denied` on an access-denied message. */
+  reason: 'data-e9-reason',
   /** Comma-separated required fields a login button requests. */
   fields: 'data-e9-fields',
   /** Comma-separated optional fields a login button requests. */
@@ -237,6 +239,7 @@ export function bindContent(
     if (changeEl) {
       event.preventDefault();
       id.changeDelegateInfo({
+        reason: changeEl.getAttribute(CONTENT_ATTRIBUTES.reason) === 'access_denied' ? 'access_denied' : undefined,
         minLevel: parseLevel(changeEl.getAttribute(CONTENT_ATTRIBUTES.changeDelegate)),
         fields: parseFields(changeEl.getAttribute(CONTENT_ATTRIBUTES.fields)),
         optionalFields: parseFields(changeEl.getAttribute(CONTENT_ATTRIBUTES.optionalFields)),

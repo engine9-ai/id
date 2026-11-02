@@ -8,7 +8,7 @@ import {
 import { meetsGate, meetsLevel } from './levels';
 import { createDebugLog } from './log';
 import { defaultConfiguration } from './discovery';
-import { openIdentityPopup, openLogoutPopup } from './popup';
+import { openBlankPopup, openIdentityPopup, openLogoutPopup } from './popup';
 import { createDelegateProvider } from './provider';
 import { randomId } from './random';
 import { isLocalPage, skipDowngrades } from './skip';
@@ -145,12 +145,24 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       { step: 'state', expected: expected ?? null, received: received ?? null },
     );
 
-  const beginRequest = (): { nonce: string; state: string } => {
-    const nonce = randomId();
-    const state = randomId();
+  // With a cookie session core issues the nonce, so the token can only finish
+  // a sign-in this browser began with core (see CoreSessionMode).
+  const serverNonce = Boolean(config.core && config.core.session === 'cookie');
+
+  const beginRequest = async (): Promise<{ nonce: string; state: string }> => {
+    const { nonce, state } =
+      serverNonce && core ? await core.begin() : { nonce: randomId(), state: randomId() };
     storage.set(STORAGE_KEYS.nonce, nonce);
     storage.set(STORAGE_KEYS.state, state);
     return { nonce, state };
+  };
+
+  /** Verify a returned token, and keep its request's `state` for a cookie login. */
+  const finishReturn = async (token: string, nonce: string | undefined, state: string | null) => {
+    const identity = await verifyAndStore(token, nonce);
+    if (state) storage.set(STORAGE_KEYS.loginState, state);
+    else storage.remove(STORAGE_KEYS.loginState);
+    return identity;
   };
 
   const requestIdentity = async (
@@ -165,7 +177,19 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       log('request:insecure', { url: insecure });
       throw insecureDomainError(insecure);
     }
-    const { nonce, state } = beginRequest();
+    // A popup must open inside the click. Asking core for its nonce first is a
+    // network round trip, so open the window empty now and point it at
+    // Delegate once core answers.
+    const preopened =
+      serverNonce && opts.mode !== 'redirect' && provider.buildBridgeUrl ? openBlankPopup(log) : undefined;
+    let begun: { nonce: string; state: string };
+    try {
+      begun = await beginRequest();
+    } catch (err) {
+      preopened?.close();
+      throw err;
+    }
+    const { nonce, state } = begun;
     const loginLevel = opts.loginLevel ?? config.loginLevel;
     const loginProviders = opts.loginProviders ?? config.loginProviders;
     const brand = opts.brand ?? config.brand;
@@ -188,6 +212,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       minLevel: opts.minLevel,
       maxLevel: opts.maxLevel,
       prompt: opts.prompt,
+      reason: opts.reason,
       loginLevel,
       expiresIn,
       fields: opts.fields,
@@ -199,6 +224,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       fields: opts.fields,
       optionalFields: opts.optionalFields,
       prompt: opts.prompt,
+      reason: opts.reason,
       loginLevel,
       loginProviders,
       brand,
@@ -247,6 +273,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       url: popupUrl,
       expectedOrigin,
       log,
+      popup: preopened,
     });
     if (!message) {
       log('popup:fallback_to_redirect', { returnTo });
@@ -264,7 +291,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     }
     storage.remove(STORAGE_KEYS.nonce);
     storage.remove(STORAGE_KEYS.state);
-    return verifyAndStore(message.token, nonce);
+    return finishReturn(message.token, nonce, state);
   };
 
   const handleCallback = async (): Promise<Identity | null> => {
@@ -297,7 +324,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
         throw stateMismatch(expectedState, parsed.state);
       }
       const nonce = storage.get(STORAGE_KEYS.nonce) ?? undefined;
-      const identity = await verifyAndStore(parsed.token, nonce);
+      const identity = await finishReturn(parsed.token, nonce, expectedState ?? parsed.state ?? null);
       storage.remove(STORAGE_KEYS.nonce);
       storage.remove(STORAGE_KEYS.state);
       return identity;
@@ -366,6 +393,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       returnTo: opts.returnTo,
       responseMode: opts.responseMode,
       prompt: 'select',
+      reason: opts.reason,
       loginLevel: opts.loginLevel,
       loginProviders: opts.loginProviders,
       expiresIn: opts.expiresIn,
@@ -375,7 +403,10 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
   const logout = async (opts: LogoutOptions = {}): Promise<void> => {
     storage.clearIdentity();
     notify(null);
-    if (!opts.delegate) return;
+    // A cookie session lives on the server; clearing this page's storage does not end it.
+    // Started, not awaited, so Delegate's logout popup still opens inside the click.
+    const coreLogout = serverNonce && core ? core.logout() : Promise.resolve();
+    if (!opts.delegate) return coreLogout;
     if (opts.mode === 'popup' && provider.buildLogoutBridgeUrl) {
       const delegateBase = trimSlash(config.delegateUrl ?? DEFAULT_DELEGATE_URL);
       const result = await openLogoutPopup({
@@ -385,13 +416,15 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
           new URL(delegateBase).origin,
         log,
       });
-      if (result) return;
+      if (result) return coreLogout;
       log('logout_popup:fallback_to_redirect', {});
     }
     const built = provider.buildLogoutUrl?.({
       domain,
       returnTo: currentHref(),
     });
+    // Leaving the page would cancel the core request.
+    await coreLogout;
     if (built !== undefined) assignLocation(await built);
   };
 
@@ -425,6 +458,8 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
           if (token) storage.set(STORAGE_KEYS.coreSession, token);
           else storage.remove(STORAGE_KEYS.coreSession);
         },
+        getLoginState: () => storage.get(STORAGE_KEYS.loginState),
+        clearLoginState: () => storage.remove(STORAGE_KEYS.loginState),
       })
     : undefined;
 

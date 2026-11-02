@@ -12,6 +12,10 @@ export interface CreateCoreClientOptions extends CoreConfig {
   getDelegateToken: () => string | null;
   getSessionToken?: () => string | null;
   setSessionToken?: (token: string | null) => void;
+  /** `session: 'cookie'`: the `state` of the request behind the current Identity Token. */
+  getLoginState?: () => string | null;
+  /** Forget that `state`: core accepts each one once. */
+  clearLoginState?: () => void;
   fetchImpl?: FetchImpl;
 }
 
@@ -59,12 +63,19 @@ function coreError(
   return new DelegateIdentityError(code, text || fallbackMessage, details);
 }
 
-function loginResult(body: unknown, fallbackToken?: string): CoreLoginResult {
+function loginResult(body: unknown, fallbackToken?: string, cookie = false): CoreLoginResult {
   if (!body || typeof body !== 'object') {
+    if (cookie) return { session: {} };
     if (fallbackToken) return { token: fallbackToken, session: {} };
     throw new DelegateIdentityError('invalid_request', 'core login returned an empty body');
   }
   const rec = body as Record<string, unknown>;
+  const session =
+    rec.session && typeof rec.session === 'object'
+      ? (rec.session as CoreSession)
+      : (rec as CoreSession);
+  // The cookie is the session; core leaves the token out of the body.
+  if (cookie) return { session };
   const token =
     (typeof rec.token === 'string' && rec.token) ||
     (typeof rec.session_token === 'string' && rec.session_token) ||
@@ -72,11 +83,17 @@ function loginResult(body: unknown, fallbackToken?: string): CoreLoginResult {
   if (!token) {
     throw new DelegateIdentityError('invalid_request', 'core login did not return a session token');
   }
-  const session =
-    rec.session && typeof rec.session === 'object'
-      ? (rec.session as CoreSession)
-      : (rec as CoreSession);
   return { token, session };
+}
+
+/** True when `apiUrl` is on this page's host, so the browser sends core's cookie to it. */
+function sameHost(apiUrl: string): boolean {
+  if (typeof location === 'undefined') return true;
+  try {
+    return new URL(apiUrl, location.href).host === location.host;
+  } catch {
+    return false;
+  }
 }
 
 function applyCoreHeaders(
@@ -96,8 +113,16 @@ function applyCoreHeaders(
 export function createCoreClient(opts: CreateCoreClientOptions): CoreClient {
   const apiUrl = trimSlash(opts.apiUrl);
   const fetchImpl = opts.fetchImpl ?? defaultFetch;
+  const cookie = opts.session === 'cookie';
+  if (cookie && !sameHost(apiUrl) && typeof console !== 'undefined') {
+    console.error(
+      '[engine9/id]',
+      `core.session is 'cookie', but core.apiUrl (${apiUrl}) is not on this page's host, so the browser will not send core's session cookie to it. Serve core on this host (for example /api), or use session: 'token'.`,
+    );
+  }
 
-  const sessionToken = (): string | null => opts.getSessionToken?.() ?? null;
+  // With a cookie session the browser sends the cookie; no session header.
+  const sessionToken = (): string | null => (cookie ? null : opts.getSessionToken?.() ?? null);
 
   const request = async (path: string, init: RequestInit = {}): Promise<Response> => {
     const url = path.startsWith('http')
@@ -123,6 +148,23 @@ export function createCoreClient(opts: CreateCoreClientOptions): CoreClient {
   };
 
   return {
+    async begin(): Promise<{ state: string; nonce: string }> {
+      const res = await request('/auth/begin', { method: 'POST', body: '{}' });
+      const body = await asJson(res);
+      if (!res.ok) {
+        throw fail(res, body, 'invalid_request', `core could not start a sign-in (${res.status})`);
+      }
+      const rec = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+      if (typeof rec.state !== 'string' || typeof rec.nonce !== 'string') {
+        throw new DelegateIdentityError(
+          'invalid_request',
+          'core POST /auth/begin did not return a state and nonce. @engine9/core 1.18.0 or later is needed for session: \'cookie\'.',
+          { status: res.status },
+        );
+      }
+      return { state: rec.state, nonce: rec.nonce };
+    },
+
     async login(): Promise<CoreLoginResult> {
       const delegateToken = opts.getDelegateToken();
       if (!delegateToken) {
@@ -131,17 +173,32 @@ export function createCoreClient(opts: CreateCoreClientOptions): CoreClient {
           'No Identity Token. Call requestIdentity() first.',
         );
       }
+      const payload: Record<string, unknown> = { delegate_token: delegateToken };
+      if (cookie) {
+        payload.cookie = true;
+        payload.state = opts.getLoginState?.() ?? undefined;
+        // Core accepts each sign-in once, whatever it answers.
+        opts.clearLoginState?.();
+      }
       const res = await request('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ delegate_token: delegateToken }),
+        body: JSON.stringify(payload),
       });
       const body = await asJson(res);
       if (!res.ok) {
         throw fail(res, body, 'invalid_request', `core login failed (${res.status})`);
       }
-      const result = loginResult(body);
-      opts.setSessionToken?.(result.token);
+      const result = loginResult(body, undefined, cookie);
+      opts.setSessionToken?.(result.token ?? null);
       return result;
+    },
+
+    async logout(): Promise<void> {
+      const res = await request('/auth/logout', { method: 'POST', body: '{}' });
+      opts.setSessionToken?.(null);
+      if (!res.ok) {
+        throw fail(res, await asJson(res), 'invalid_request', `core logout failed (${res.status})`);
+      }
     },
 
     async me(): Promise<CoreSession> {
@@ -162,7 +219,7 @@ export function createCoreClient(opts: CreateCoreClientOptions): CoreClient {
       if (!res.ok) {
         throw fail(res, body, 'access_denied', 'core changeRole failed');
       }
-      const result = loginResult(body, sessionToken() ?? undefined);
+      const result = loginResult(body, sessionToken() ?? undefined, cookie);
       if (result.token) opts.setSessionToken?.(result.token);
       return result;
     },

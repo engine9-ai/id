@@ -90,6 +90,27 @@ export interface OpenIdentityPopupOptions {
   name?: string;
   features?: string;
   log?: DebugLog;
+  /**
+   * A window `openBlankPopup()` already opened inside the click; it is sent to
+   * `url`. `null`: that window was blocked. Omit to open one now.
+   */
+  popup?: Window | null;
+}
+
+export const IDENTITY_POPUP_NAME = 'engine9-identity';
+export const IDENTITY_POPUP_FEATURES = 'popup=yes,width=480,height=720';
+
+/**
+ * Open the identity popup empty, now. A browser only lets a click open a
+ * window for a moment; a sign-in that first asks the Site's server for its
+ * nonce opens the window here and points it at Delegate afterwards.
+ * Returns null when the browser blocked it.
+ */
+export function openBlankPopup(log: DebugLog = () => {}): Window | null {
+  if (typeof window === 'undefined' || typeof window.open !== 'function') return null;
+  const popup = window.open('', IDENTITY_POPUP_NAME, IDENTITY_POPUP_FEATURES);
+  log(popup ? 'popup:opened_blank' : 'popup:blocked', {});
+  return popup;
 }
 
 /**
@@ -100,11 +121,13 @@ export function openIdentityPopup(
   opts: OpenIdentityPopupOptions,
 ): Promise<DelegateIdentityMessage | null> {
   const log = opts.log ?? (() => {});
-  const popup = window.open(
-    opts.url,
-    opts.name ?? 'engine9-identity',
-    opts.features ?? 'popup=yes,width=480,height=720',
-  );
+  let popup: Window | null;
+  if (opts.popup === undefined) {
+    popup = window.open(opts.url, opts.name ?? IDENTITY_POPUP_NAME, opts.features ?? IDENTITY_POPUP_FEATURES);
+  } else {
+    popup = opts.popup && !opts.popup.closed ? opts.popup : null;
+    if (popup) popup.location.replace(opts.url);
+  }
   if (!popup) {
     log('popup:blocked', { url: opts.url });
     return Promise.resolve(null);

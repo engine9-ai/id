@@ -6,6 +6,14 @@ export type IdentityMode = 'redirect' | 'popup';
 
 export type Prompt = 'none' | 'select' | 'consent' | 'login';
 
+/**
+ * Why the Site sends a signed-in visitor back to Delegate (`reason`).
+ * `access_denied`: the Site signed them in but did not let them in. Delegate
+ * shows the share screen (it implies `prompt: 'select'`) with a notice in its
+ * own words, so the visitor can pick another address or account.
+ */
+export type ReturnReason = 'access_denied';
+
 export type ResponseMode = 'fragment' | 'query';
 
 /**
@@ -84,9 +92,28 @@ export interface Identity {
   verified_claims?: unknown;
 }
 
+/**
+ * Where the Core Session lives.
+ *
+ * `cookie` (recommended for any Site with a server, and required when the
+ * server gates pages with `requireRole`): core sets its HttpOnly
+ * `e9_session` cookie, the same session its redirect sign-in sets. Each login
+ * starts with `POST /auth/begin`, so the Identity Token must carry a nonce
+ * core issued to this browser; `core.login()` sends `cookie: true` with the
+ * request's `state`. The session token never reaches page script. `apiUrl`
+ * must be on the page's own host.
+ *
+ * `token` (default, for a page with no server routes of its own): core
+ * returns the session token, kept in this client's storage and sent as
+ * `X-Engine9-Session`. A server gate cannot see it.
+ */
+export type CoreSessionMode = 'token' | 'cookie';
+
 export interface CoreConfig {
   apiUrl: string;
   publicApiKey: string;
+  /** Default `token`. Use `cookie` on a Site with a server. See `CoreSessionMode`. */
+  session?: CoreSessionMode;
 }
 
 /**
@@ -137,6 +164,7 @@ export interface Engine9IdProvider {
     fields?: string[];
     optionalFields?: string[];
     prompt?: Prompt;
+    reason?: ReturnReason;
     loginLevel?: LoginLevel;
     loginProviders?: LoginProviders;
     brand?: SignInBrand;
@@ -153,6 +181,7 @@ export interface Engine9IdProvider {
     fields?: string[];
     optionalFields?: string[];
     prompt?: Prompt;
+    reason?: ReturnReason;
     loginLevel?: LoginLevel;
     loginProviders?: LoginProviders;
     brand?: SignInBrand;
@@ -225,6 +254,8 @@ export interface RequestIdentityOptions {
   fields?: string[];
   optionalFields?: string[];
   prompt?: Prompt;
+  /** Why the Site sends the visitor back (`'access_denied'`). See `ReturnReason`. */
+  reason?: ReturnReason;
   /** Sign-in screen for this request. Default: the client's `loginLevel`, else `3`. */
   loginLevel?: LoginLevel;
   /** Providers for this request. Default: the client's `loginProviders`, else Google only. */
@@ -252,6 +283,11 @@ export interface RequestIdentityOptions {
  * Level 1, popup.
  */
 export interface ChangeDelegateInfoOptions {
+  /**
+   * `'access_denied'` on an access-denied message: Delegate tells the visitor
+   * this Site did not let them in with the address they shared.
+   */
+  reason?: ReturnReason;
   minLevel?: number;
   maxLevel?: number;
   fields?: string[];
@@ -362,14 +398,19 @@ export interface CoreSession {
 }
 
 export interface CoreLoginResult {
-  token: string;
+  /** The Core Session token. Absent with `session: 'cookie'`: the session is the HttpOnly cookie. */
+  token?: string;
   session: CoreSession;
 }
 
 export interface CoreClient {
+  /** `session: 'cookie'` only: `POST /auth/begin`, a state and nonce core bound to this browser. Login calls it for you. */
+  begin(): Promise<{ state: string; nonce: string }>;
   login(): Promise<CoreLoginResult>;
   me(): Promise<CoreSession>;
   changeRole(roleId: string): Promise<CoreLoginResult>;
+  /** `POST /auth/logout`: ends the Core Session (and clears the cookie). `logout()` calls it with `session: 'cookie'`. */
+  logout(): Promise<void>;
   fetch(path: string, init?: RequestInit): Promise<Response>;
 }
 

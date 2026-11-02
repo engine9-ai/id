@@ -44,6 +44,8 @@ export interface AuthorizeUrlOptions {
   fields?: string[] | string;
   optionalFields?: string[] | string;
   prompt?: string;
+  /** `reason`: why the Site sends the visitor back (`access_denied`). Implies `prompt=select`. */
+  reason?: string;
   /** `login_level`: delegate sign-in screen. `2` adds an email sign-in link. */
   loginLevel?: number;
   /** `login_providers`: sign-in buttons Delegate offers (`google,facebook`). Default Google only. */
@@ -71,6 +73,7 @@ export interface BridgeUrlOptions {
   fields?: string[] | string;
   optionalFields?: string[] | string;
   prompt?: string;
+  reason?: string;
   loginLevel?: number;
   loginProviders?: LoginProviders;
   brand?: SignInBrand;
@@ -136,6 +139,7 @@ export function authorizeUrl(opts: AuthorizeUrlOptions): string {
   setOptional(url.searchParams, 'fields', fieldsParam(opts.fields));
   setOptional(url.searchParams, 'optional_fields', fieldsParam(opts.optionalFields));
   setOptional(url.searchParams, 'prompt', opts.prompt);
+  setOptional(url.searchParams, 'reason', opts.reason);
   setOptional(url.searchParams, 'login_level', opts.loginLevel);
   setOptional(url.searchParams, 'login_providers', providersParam(opts.loginProviders));
   setBrand(url.searchParams, opts.brand);
@@ -158,6 +162,7 @@ export function bridgeUrl(opts: BridgeUrlOptions): string {
   setOptional(url.searchParams, 'fields', fieldsParam(opts.fields));
   setOptional(url.searchParams, 'optional_fields', fieldsParam(opts.optionalFields));
   setOptional(url.searchParams, 'prompt', opts.prompt);
+  setOptional(url.searchParams, 'reason', opts.reason);
   setOptional(url.searchParams, 'login_level', opts.loginLevel);
   setOptional(url.searchParams, 'login_providers', providersParam(opts.loginProviders));
   setBrand(url.searchParams, opts.brand);

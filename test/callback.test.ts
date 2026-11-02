@@ -176,6 +176,12 @@ describe('changeDelegateInfo', () => {
     expect(buildAuthorizeUrl).toHaveBeenLastCalledWith(
       expect.objectContaining({ prompt: 'select', minLevel: 2, fields: ['email'] }),
     );
+    expect(buildAuthorizeUrl.mock.lastCall?.[0]).not.toHaveProperty('reason', 'access_denied');
+
+    await id.changeDelegateInfo({ mode: 'redirect', reason: 'access_denied' });
+    expect(buildAuthorizeUrl).toHaveBeenLastCalledWith(
+      expect.objectContaining({ prompt: 'select', reason: 'access_denied' }),
+    );
   });
 });
 

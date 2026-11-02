@@ -7,6 +7,31 @@ Only releases from the last week are listed. Pin the version you install
 (`@engine9/id@1.14.0`); a copy of `id.iife.js` you saved earlier is the
 version it was saved from.
 
+## Unreleased: `reason: 'access_denied'`
+
+A Site that signs a visitor in but will not let them in can now tell
+Delegate why it is sending them back. Delegate opens its share screen with a
+notice, in its own words, that the Site did not let them in with the address
+they shared. The visitor picks another address, adds one, or uses a
+different account.
+
+- `id.changeDelegateInfo({ reason: 'access_denied' })`, and `reason` on
+  `requestIdentity`. Type `ReturnReason`.
+- `<button data-e9-change-delegate data-e9-reason="access_denied">`.
+- `authorizeUrl` / `bridgeUrl` send `reason`.
+- [docs/with-core.md](docs/with-core.md) now says what goes in
+  `@engine9/id` (UI) and what goes in `@engine9/core` (sign-in, session,
+  every access decision).
+
+Delegate also stops a silent loop by itself: after two silent tokens for a
+Domain in two minutes, the next request shows the share screen
+([protocol](docs/protocol.md#silent-loops)). No change is needed for that.
+
+| Where | Find | Change to |
+| --- | --- | --- |
+| An access-denied message | `<button data-e9-change-delegate>` | `<button data-e9-change-delegate data-e9-reason="access_denied">` |
+| An access-denied handler in JavaScript | `id.changeDelegateInfo()` | `id.changeDelegateInfo({ reason: 'access_denied' })` |
+
 ## 1.14.0: A refused site key is `site_key_rejected`
 
 When `@engine9/core` refuses the Site's public API key, `core.login()`,

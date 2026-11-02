@@ -15,6 +15,29 @@ On-ramp without a database: [without-core.md](./without-core.md),
 [declared-roles.md](./declared-roles.md), [forms.md](./forms.md),
 [`demo-id`](../../demo-id). Festival Site with core: [`demo-festival`](../../demo-festival).
 
+## What goes in `@engine9/id`, and what goes in core
+
+**The server decides, the browser shows.**
+
+| Put it in | What |
+| --- | --- |
+| `@engine9/id` (browser) | The Login widget, soft `data-e9-*` content by Identity Level, the "Change your Delegate information" button. Nothing it hides is secret |
+| `@engine9/core` (server) | Sign-in routes (`/api/auth/start`, `/api/auth/callback`), the `e9_session` cookie, `person_id` and roles, and every access decision (`requireRole`: 401 signed out, 403 signed in without access) |
+
+If your site has a server of its own (pages or API routes that need a
+role), sign in through core's routes and gate with `requireRole`. Use
+`@engine9/id` there for UI only. Do not also call `id.core.login()`: that
+keeps the session in the browser, where your server gate cannot see it.
+Core's guide: [Sign-in on a site](../../core/docs/sign-in.md).
+
+`id.core.login()` (below) is for a site with no server routes of its own,
+where core's API is the only thing to protect.
+
+Never answer "signed in, but not allowed" by sending the person to log in
+again. Delegate returns the address it remembers, at once, and they loop.
+Show who they are signed in as, and a change button with
+`reason: 'access_denied'`.
+
 ## When you need core
 
 Anything involving `person_id`, `person_segment` Roles, gated reads
@@ -83,9 +106,11 @@ person by the confirmed address, so picking another address signs in as the
 person core knows by that address: a different person unless core already
 joined the two ([core: who is signing in](https://github.com/engine9-ai/core/blob/main/auth/README.md#who-is-signing-in-credential-identity-deduplication)).
 The Domain UNID stays the same, but core does not use it to join people. On
-an access-denied message, add a
-`data-e9-change-delegate` button (or call `widget.open()`) so the fix is one
-click away.
+an access-denied message, add
+`<button data-e9-change-delegate data-e9-reason="access_denied">` (or call
+`id.changeDelegateInfo({ reason: 'access_denied' })`) so the fix is one
+click away. With the reason, Delegate tells the person this Site did not let
+them in with the address they shared.
 
 A Site whose server sets its own session cookie (like
 [`demo-festival`](../../demo-festival)) passes that session as the widget's

@@ -364,6 +364,7 @@ reading", "Confirm your email to comment"):
 | `data-e9-logout`                       | Click forgets the identity on this website                                   |
 | `data-e9-logout="delegate"`            | Also signs the visitor out of delegate itself, then returns to this page     |
 | `data-e9-change-delegate`              | "Change your Delegate information": reopens delegate to pick another email address or change what is shared. Value is the minimum Level (default 1) |
+| `data-e9-reason`                       | On a `data-e9-change-delegate` element: `access_denied` on an access-denied message. Delegate then tells the visitor this Site did not let them in with the address they shared |
 | `data-e9-field="given_name"`         | Replaces the element's text with that shared field when available            |
 | `data-e9-level`                        | Replaces the text with the Level number (`0`–`4`)                            |
 | `data-e9-level="name"`                 | Replaces the text with the Level name (`Provided`, `Contact Confirmed`, …)   |
@@ -426,7 +427,7 @@ the same thing in one click:
 ```html
 <div data-e9-min-level="1" hidden>
   <p>That address isn't on our list. Use the address we have for you.</p>
-  <button data-e9-change-delegate>Change your Delegate information</button>
+  <button data-e9-change-delegate data-e9-reason="access_denied">Use a different email</button>
 </div>
 ```
 
@@ -849,7 +850,7 @@ Guides: [with-core](./docs/with-core.md), [declared roles](./docs/declared-roles
 | `signIn({ minLevel?, fields?, loginHint?, brand?, returnTo?, … })` | A full-page login. Returns the stored identity, without redirecting, when already signed in at `minLevel`. See [The simple button](#the-simple-button) |
 | `finishSignIn({ onSignedIn?, onCoreError? })` | On page load: finish a returning login, run `core.login()` when `core` is set, then `onSignedIn({ identity, session })`. `null` when nothing came back |
 | `ensureLevel(n, opts?)` | No-op if already at `n`; otherwise try silently, then interactively |
-| `changeDelegateInfo(opts?)` | "Change your Delegate information": `prompt=select` with the current Grant's fields, so the visitor can pick another email address. Options as `requestIdentity`, all optional (default Level 1, popup) |
+| `changeDelegateInfo(opts?)` | "Change your Delegate information": `prompt=select` with the current Grant's fields, so the visitor can pick another email address. Options as `requestIdentity`, all optional (default Level 1, popup). `reason: 'access_denied'` on an access-denied message |
 | `gate({ minLevel?, maxLevel?, twoFactor?, onAllow?, onBlock?, onChange? })` | Soft content hook; returns unsubscribe |
 | `onChange(cb)` | Any identity change; returns unsubscribe |
 | `getToken()` | The stored Identity Token (JWT) to send to your server, or `null` |

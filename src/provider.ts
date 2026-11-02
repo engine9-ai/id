@@ -6,6 +6,7 @@ import type {
   LoginLevel,
   LoginProviders,
   Prompt,
+  ReturnReason,
   ResponseMode,
   SignInBrand,
 } from './types';
@@ -30,6 +31,7 @@ export interface BuildAuthorizeOptions {
   fields?: string[];
   optionalFields?: string[];
   prompt?: Prompt;
+  reason?: ReturnReason;
   loginLevel?: LoginLevel;
   loginProviders?: LoginProviders;
   brand?: SignInBrand;
@@ -48,6 +50,7 @@ export interface BuildBridgeOptions {
   fields?: string[];
   optionalFields?: string[];
   prompt?: Prompt;
+  reason?: ReturnReason;
   loginLevel?: LoginLevel;
   loginProviders?: LoginProviders;
   brand?: SignInBrand;
@@ -124,6 +127,7 @@ export function createDelegateProvider(
         fields: opts.fields,
         optionalFields: opts.optionalFields,
         prompt: opts.prompt,
+        reason: opts.reason,
         loginLevel: opts.loginLevel,
         loginProviders: opts.loginProviders,
         brand: opts.brand,
@@ -146,6 +150,7 @@ export function createDelegateProvider(
         fields: opts.fields,
         optionalFields: opts.optionalFields,
         prompt: opts.prompt,
+        reason: opts.reason,
         loginLevel: opts.loginLevel,
         loginProviders: opts.loginProviders,
         brand: opts.brand,

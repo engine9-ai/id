@@ -30,6 +30,22 @@ describe('authorizeUrl', () => {
     expect(url).not.toContain('site=');
   });
 
+  it('sends reason only when asked, on authorize and bridge', () => {
+    const base = {
+      delegateUrl: 'https://delegate.network',
+      domain: 'site.example',
+      returnTo: 'https://site.example/callback',
+    };
+    expect(new URL(authorizeUrl(base)).searchParams.has('reason')).toBe(false);
+    const denied = new URL(authorizeUrl({ ...base, prompt: 'select', reason: 'access_denied' }));
+    expect(denied.searchParams.get('reason')).toBe('access_denied');
+    expect(denied.searchParams.get('prompt')).toBe('select');
+    expect(
+      new URL(bridgeUrl({ delegateUrl: base.delegateUrl, domain: base.domain, reason: 'access_denied' }))
+        .searchParams.get('reason'),
+    ).toBe('access_denied');
+  });
+
   it('sends login_level only when asked', () => {
     const base = {
       delegateUrl: 'https://delegate.network',

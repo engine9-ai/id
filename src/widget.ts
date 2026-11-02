@@ -120,11 +120,17 @@ export interface LoginWidgetOptions extends Engine9IdConfig {
   /** The visitor picked a role. Throw to refuse; the error is shown in the dialog. */
   onRoleChange?(roleId: string, ctx: LoginWidgetContext): void | Promise<void>;
   /**
-   * Log out was clicked (a site with a server session ends it here). Runs
-   * alongside Delegate logout; use `fetch(…, { keepalive: true })` if it can
-   * race a navigation.
+   * Log out was clicked (a site with its own server session ends it here).
+   * Runs alongside Delegate logout; use `fetch(…, { keepalive: true })` if it
+   * can race a navigation. With `core.session: 'cookie'` there is nothing to
+   * do here: `id.logout()` ends core's session.
    */
   onLogout?(): void | Promise<void>;
+  /**
+   * Runs once every logout has finished: the site's, core's, and Delegate's.
+   * Reload or navigate here, not in `onLogout`, so no request is cancelled.
+   */
+  onLoggedOut?(): void | Promise<void>;
   /**
    * End the Delegate session too on Log out. `false` (default) logs out of
    * this site only; `ask` shows a checkbox; `true` always. Delegate logout
@@ -641,6 +647,7 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
       const ended = id.logout({ delegate, mode: 'popup' });
       await Promise.all([site, ended]);
       close();
+      await options.onLoggedOut?.();
     });
   };
 
