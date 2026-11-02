@@ -21,7 +21,7 @@ facts (`person_id`, Roles) after core finds the person by the confirmed email
 
 - **Token in server logs.** Default `response_mode=fragment` puts
   `delegate_token` in the URL hash. Use `query` only for server callbacks
-  (demo `/auth/delegate`) and do not log the full query string. Delegate
+  (`@engine9/core`'s `/api/auth/callback`) and do not log the full query string. Delegate
   issues `query` tokens for 5 minutes unless `expires_in` asks otherwise.
 - **Popup spoofing.** Accept `postMessage` only from the delegate origin;
   type must be `delegate-identity`; verify the JWT before storing.

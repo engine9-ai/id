@@ -284,32 +284,58 @@ Styling: set `--e9-accent`, `--e9-bg`, `--e9-fg`, `--e9-muted`, `--e9-border`,
 
 ### With a server session
 
-A site that mints its own session (like `@engine9/core`) passes the server's
-view as `user`, and posts the token in `onLogin`. The server is then the one
-that enforces roles; the widget just offers them.
+**On a site with a server, this is the recommended way to use the widget.**
+`@engine9/core` 1.18.0 and later set their own HttpOnly `e9_session` cookie
+from the widget's sign-in, so the site writes no route that takes the token.
+The server, with core's `requireRole`, is the one that enforces roles; the
+widget just offers them. Pass the server's view of the session as `user`.
 
 ```js
+import { createEngine9Id } from '@engine9/id';
+import { loginWidget } from '@engine9/id/widget';
+
+const id = createEngine9Id({
+  core: { apiUrl: '/api', publicApiKey: 'e9publickey_…', session: 'cookie' },
+});
 loginWidget({
+  id,
   user: JSON.parse(document.body.dataset.user || 'null'),
   roles,
-  async onLogin(identity, token) {
-    const res = await fetch('/auth/delegate', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ delegate_token: token }),
-    });
-    return (await res.json()).user; // { email, role, level }
+  async onLogin() {
+    // core checks the nonce it issued for this sign-in, then sets e9_session.
+    const { session } = await id.core.login();
+    return { email: session.email, role: null, level: session.level };
   },
-  async onRoleChange(roleId) {
-    await fetch('/auth/role', { method: 'POST', body: new URLSearchParams({ role: roleId }) });
-  },
-  async onLogout() {
-    await fetch('/auth/logout', { method: 'POST', keepalive: true });
+  onLoggedOut() {
+    // id.logout() already ended core's session; server-rendered pages follow the cookie.
+    location.assign('/');
   },
 });
 ```
 
-The festival demo ([`demo-festival`](../demo-festival)) does exactly this.
+What `session: 'cookie'` does:
+
+- Each sign-in starts with core's `POST /api/auth/begin`, which returns a
+  nonce bound to this browser. The popup opens empty inside the click and
+  goes to Delegate once core answers, so popup blockers allow it.
+- `id.core.login()` posts `{ delegate_token, state, cookie: true }`. Core
+  refuses a token for any other request, or from another site's page, sets
+  `e9_session`, and returns `{ session }` with no token. Nothing in page
+  script can read the session.
+- `id.logout()` also calls core's `POST /api/auth/logout`. Navigate in
+  `onLoggedOut`, which runs after every logout request has finished, not in
+  `onLogout`, which would cancel them.
+- `apiUrl` must be on the page's host, or the browser will not send the
+  cookie (the client says so in the console).
+
+The festival demo ([`demo-festival`](../demo-festival)) does exactly this,
+and is the reference implementation. The full setup, including the redirect
+sign-in without JavaScript and the server gate, is core's
+[Sign-in on a site](../core/docs/sign-in.md).
+
+The default, `session: 'token'`, keeps the session token in this client's
+storage and sends it as `X-Engine9-Session`. Use it only on a site with no
+server routes of its own.
 
 **Keep the return from Delegate quick.** Between Delegate's last screen and
 the logged-in button, your server verifies the token, finds or creates the
@@ -320,8 +346,8 @@ whole time, but a cold server can still make it feel long:
   is one query; installing every schema plugin is dozens. Install at deploy
   time and check on login (see
   [`demo-festival`](../demo-festival/src/lib/engine9.ts)).
-- Do **only** the login in `onLogin`: verify, resolve the person, set the
-  cookie, return `{ email, role, level }`. Load everything else (profile,
+- Do **only** the login in `onLogin`: `id.core.login()`, then return
+  `{ email, role, level }`. Load everything else (profile,
   history, recommendations) after the button has updated.
 - Return the `user` from `onLogin` so the widget does not need a second
   request to learn who logged in.
@@ -792,7 +818,8 @@ try {
 - A server callback that sets its own `state` (a cookie, say) should do the
   same: on a missing or different `state`, start the login again instead of
   showing an error, at most once so a browser that drops cookies cannot loop.
-  See `demo-festival`'s `/auth/login` and `/auth/delegate`.
+  `@engine9/core`'s `/api/auth/callback` and `finishLogin` do this; use
+  them rather than writing a callback.
 
 ## Going further
 

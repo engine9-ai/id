@@ -24,14 +24,17 @@ On-ramp without a database: [without-core.md](./without-core.md),
 | `@engine9/id` (browser) | The Login widget, soft `data-e9-*` content by Identity Level, the "Change your Delegate information" button. Nothing it hides is secret |
 | `@engine9/core` (server) | Sign-in routes (`/api/auth/start`, `/api/auth/callback`), the `e9_session` cookie, `person_id` and roles, and every access decision (`requireRole`: 401 signed out, 403 signed in without access) |
 
-If your site has a server of its own (pages or API routes that need a
-role), sign in through core's routes and gate with `requireRole`. Use
-`@engine9/id` there for UI only. Do not also call `id.core.login()`: that
-keeps the session in the browser, where your server gate cannot see it.
-Core's guide: [Sign-in on a site](../../core/docs/sign-in.md).
+**If your site has a server of its own (pages or API routes that need a
+role), the recommended setup is `core: { …, session: 'cookie' }`.** Core then
+sets its HttpOnly `e9_session` cookie from every sign-in, the widget's and
+the redirect link's alike, and your server gates with `requireRole`. You
+write no route that takes the token. Core's guide:
+[Sign-in on a site](../../core/docs/sign-in.md). The reference
+implementation is [`demo-festival`](../../demo-festival).
 
-`id.core.login()` (below) is for a site with no server routes of its own,
-where core's API is the only thing to protect.
+The default, `session: 'token'`, keeps the session token in the browser,
+where a server gate cannot see it. Use it only on a site with no server
+routes of its own, where core's API is the only thing to protect.
 
 Never answer "signed in, but not allowed" by sending the person to log in
 again. Delegate returns the address it remembers, at once, and they loop.
@@ -45,15 +48,23 @@ Anything involving `person_id`, `person_segment` Roles, gated reads
 
 ## Client helpers
 
-`createEngine9Id({ core: { apiUrl, publicApiKey } })` — or
-`mount({ core: { apiUrl, publicApiKey } })` for the attribute-driven setup —
-exposes:
+`createEngine9Id({ core: { apiUrl, publicApiKey, session: 'cookie' } })` —
+or `mount({ core: { … } })` for the attribute-driven setup — exposes:
 
 - `id.core.login()` — `POST /auth/login` with the Identity Token and an
-  `e9publickey_` key (`public` scope). Core replies `{ session, token }`.
+  `e9publickey_` key (`public` scope). With `session: 'cookie'` it sends
+  `cookie: true` and the request's `state`; core sets `e9_session` and
+  replies `{ session }`. With `session: 'token'` core replies
+  `{ session, token }` and the token is kept in this client's storage.
+- `id.core.begin()` — `POST /auth/begin`. With `session: 'cookie'` every
+  `requestIdentity()` calls it first, so the token carries a nonce core
+  issued to this browser.
 - `id.core.me()` — `GET /auth/me`
-- `id.core.changeRole(roleId)` — `POST /auth/role`
-- `id.core.fetch(path, init)` — adds the public key and session/token headers
+- `id.core.changeRole(roleId)` — `POST /auth/role` (re-signs the cookie)
+- `id.core.logout()` — `POST /auth/logout`. `id.logout()` calls it with
+  `session: 'cookie'`.
+- `id.core.fetch(path, init)` — adds the public key, and the session header
+  with `session: 'token'`
 
 The public key is the `E9_PUBLIC_API_KEY` line that `npx e9core setup` writes
 to `.env` (`e9publickey_…`). It is safe in page JavaScript: it can add people
@@ -70,7 +81,7 @@ always has the current token; its Role section calls `changeRole`:
 <script src="https://unpkg.com/@engine9/id@1/dist/id.iife.js"></script>
 <script>
   const id = engine9Id.mount({
-    core: { apiUrl: '/api', publicApiKey: 'e9publickey_…' },
+    core: { apiUrl: '/api', publicApiKey: 'e9publickey_…', session: 'cookie' },
   });
   const VIP = '5f2ab45c-…'; // segment id (role_id === segment_id)
   const widget = engine9Id.loginWidget({
@@ -112,9 +123,9 @@ an access-denied message, add
 click away. With the reason, Delegate tells the person this Site did not let
 them in with the address they shared.
 
-A Site whose server sets its own session cookie (like
-[`demo-festival`](../../demo-festival)) passes that session as the widget's
-`user` and posts the token to its own route in `onLogin`; see
+A Site with a server (like [`demo-festival`](../../demo-festival)) passes
+the server's session as the widget's `user`; with `session: 'cookie'`, its
+`onLogin` is `id.core.login()`. See
 [With a server session](../README.md#with-a-server-session).
 
 Core's `/api/auth/*` routes are on whenever the host has `SESSION_SECRET`

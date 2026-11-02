@@ -268,7 +268,7 @@ Success:
 - Default: `return_to#delegate_token=<jwt>&state=<state>` (fragment so the
   token does not appear in server access logs).
 - `response_mode=query`: `return_to?delegate_token=<jwt>&state=<state>`
-  (server-side callbacks such as demo `/auth/delegate`). The URL reaches
+  (server-side callbacks such as `@engine9/core`'s `/api/auth/callback`). The URL reaches
   server logs, history, and `Referer`, so the default lifetime is 5 minutes.
   A server callback binds the return to the browser that started it: keep
   `state` and `nonce` in a short-lived HttpOnly cookie, sign nobody in

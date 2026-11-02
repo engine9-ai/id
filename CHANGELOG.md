@@ -4,10 +4,50 @@ This file lists what changed in each release, what was retired, and what a
 site should change. The current way to do things is in [README.md](README.md).
 
 Only releases from the last week are listed. Pin the version you install
-(`@engine9/id@1.14.0`); a copy of `id.iife.js` you saved earlier is the
+(`@engine9/id@1.15.0`); a copy of `id.iife.js` you saved earlier is the
 version it was saved from.
 
-## Unreleased: `reason: 'access_denied'`
+## 1.15.0: `core.session: 'cookie'` (recommended with a server), and `reason: 'access_denied'`
+
+### `core.session: 'cookie'`
+
+**On a site with a server, `core: { apiUrl, publicApiKey, session: 'cookie' }`
+is now the recommended setup.** It needs `@engine9/core` 1.18.0. Core sets
+its HttpOnly `e9_session` cookie from the widget's sign-in, the same session
+its redirect sign-in sets, so the server gate (`requireRole`) sees the
+person however they signed in, and the site writes no route of its own that
+takes the token. Before, `id.core.login()` could only return the session
+token to page script, which a server cannot see.
+
+With `session: 'cookie'`:
+
+- Every `requestIdentity()` (and so the widget, `signIn`, and
+  `changeDelegateInfo`) first calls core's `POST /auth/begin` and uses the
+  `state` and `nonce` core returns. The Identity Token is then bound to a
+  sign-in this browser began with core, and core refuses any other.
+- A popup opens empty inside the click and goes to Delegate once core
+  answers, so the round trip does not trip popup blockers.
+- `id.core.login()` sends `{ delegate_token, state, cookie: true }`. The
+  result has `session` and no `token`; nothing is stored in the browser.
+- `id.logout()` also ends core's session (`POST /auth/logout`). It starts
+  in the click, so Delegate's logout popup still opens.
+- The client warns in the console when `apiUrl` is not on the page's host,
+  where the browser would not send the cookie.
+
+Also new:
+
+- `id.core.begin()` and `id.core.logout()`.
+- `loginWidget({ onLoggedOut })` runs after every logout request has
+  finished. Navigate there; navigating in `onLogout` cancels them.
+- `CoreLoginResult.token` is optional: it is absent with
+  `session: 'cookie'`. TypeScript code that reads `result.token` as a
+  `string` needs a check. `session: 'token'` (the default) still returns it.
+
+[With a server session](README.md#with-a-server-session) and
+[docs/with-core.md](docs/with-core.md) show the setup;
+[`demo-festival`](../demo-festival) is the reference implementation.
+
+### `reason: 'access_denied'`
 
 A Site that signs a visitor in but will not let them in can now tell
 Delegate why it is sending them back. Delegate opens its share screen with a
@@ -19,9 +59,6 @@ different account.
   `requestIdentity`. Type `ReturnReason`.
 - `<button data-e9-change-delegate data-e9-reason="access_denied">`.
 - `authorizeUrl` / `bridgeUrl` send `reason`.
-- [docs/with-core.md](docs/with-core.md) now says what goes in
-  `@engine9/id` (UI) and what goes in `@engine9/core` (sign-in, session,
-  every access decision).
 
 Delegate also stops a silent loop by itself: after two silent tokens for a
 Domain in two minutes, the next request shows the share screen
@@ -29,6 +66,10 @@ Domain in two minutes, the next request shows the share screen
 
 | Where | Find | Change to |
 | --- | --- | --- |
+| `package.json` | `"@engine9/id": "1.14.0"` | `"1.15.0"`, with `"@engine9/core": "1.18.0"` |
+| `createEngine9Id` / `mount` / `loginWidget` on a site with a server | `core: { apiUrl, publicApiKey }` | `core: { apiUrl, publicApiKey, session: 'cookie' }` |
+| The widget's `onLogin` on such a site | `fetch('/your/route', { body: JSON.stringify({ delegate_token: token }) })` | `await id.core.login()` (and delete the route) |
+| The widget's `onLogout` | `fetch('/auth/logout'); location.assign('/')` | Nothing; `onLoggedOut() { location.assign('/') }` |
 | An access-denied message | `<button data-e9-change-delegate>` | `<button data-e9-change-delegate data-e9-reason="access_denied">` |
 | An access-denied handler in JavaScript | `id.changeDelegateInfo()` | `id.changeDelegateInfo({ reason: 'access_denied' })` |
 
