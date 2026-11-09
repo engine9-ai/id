@@ -385,8 +385,8 @@ reading", "Confirm your email to comment"):
 | `data-e9-fields="given_name,email"`    | Required fields the button requests. Default: `display_name`, `email`        |
 | `data-e9-optional-fields="phone"`      | Optional fields. Declining one does not drop the visitor to Level 0          |
 | `data-e9-prompt="select"`              | Always show the field form again                                              |
-| `data-e9-login-level="2"`              | Delegate's sign-in screen also offers an emailed sign-in link (default: Google only). See [Sign-in screens](#sign-in-screens-google-only-or-google-plus-an-email-link) |
-| `data-e9-login-providers="google,facebook"` | Delegate's sign-in screen also offers Facebook (default: Google only). See [Sign-in providers](#sign-in-providers-google-and-facebook) |
+| `data-e9-login-level="2"`              | Delegate's sign-in screen also offers an emailed sign-in code (default: Google only). See [Sign-in screens](#sign-in-screens-google-only-or-google-plus-an-email-link) |
+| `data-e9-login-providers="google,facebook"` | Delegate's sign-in screen also offers Facebook (default: Google only). See [Sign-in providers](#sign-in-providers-google-facebook-and-microsoft) |
 | `data-e9-logout`                       | Click forgets the identity on this website                                   |
 | `data-e9-logout="delegate"`            | Also signs the visitor out of delegate itself, then returns to this page     |
 | `data-e9-change-delegate`              | "Change your Delegate information": reopens delegate to pick another email address or change what is shared. Value is the minimum Level (default 1) |
@@ -432,7 +432,7 @@ so keep a "why" sentence next to the button.
 
 Signing in with Google already counts as Level 3, which is more than Level 2.
 To let people without Google in too, add `data-e9-login-level="2"`. Delegate
-then also offers "Email me a sign-in link":
+then also offers "Email me a sign-in code":
 
 ```html
 <button data-e9-login="2" data-e9-login-level="2">Confirm email</button>
@@ -555,8 +555,8 @@ Every option is optional.
 | `fields`      | delegate default               | Required fields login buttons request                            |
 | `mode`        | `'popup'`                      | `'redirect'` sends the whole page to delegate and back           |
 | `prompt`      | —                              | `'select'` always shows the chooser                              |
-| `loginLevel`  | `3` (Google only)              | `2` also offers an emailed sign-in link. See [Sign-in screens](#sign-in-screens-google-only-or-google-plus-an-email-link) |
-| `loginProviders` | `['google']`                | `['google', 'facebook']` also offers Facebook. See [Sign-in providers](#sign-in-providers-google-and-facebook) |
+| `loginLevel`  | `3` (Google only)              | `2` also offers an emailed sign-in code. See [Sign-in screens](#sign-in-screens-google-only-or-google-plus-an-email-link) |
+| `loginProviders` | `['google']`                | `['google', 'facebook']` also offers Facebook. See [Sign-in providers](#sign-in-providers-google-facebook-and-microsoft) |
 | `brand`       | your Domain, Delegate blue     | `{ name, color, logo, wordmark, background, text, card, cardText, font, google }` on delegate's sign-in page and email. See [Branding the sign-in](#branding-the-sign-in) |
 | `root`        | `document`                     | Where to look for `data-e9-*` elements                           |
 | `onError`     | `console.warn`                 | Called when login fails or a redirect returns `error=`           |
@@ -609,11 +609,19 @@ sign-in screens. Your site picks which one with `loginLevel`.
 | `loginLevel`        | The visitor sees                                      | Use it when                                                |
 | ------------------- | ----------------------------------------------------- | ---------------------------------------------------------- |
 | `3` (default) or `4` | **Sign in with Google** only                         | You need Level 3 or 4, or have no reason to change it       |
-| `2`                 | **Sign in with Google**, or **Email me a sign-in link** | Level 0–2 is enough and you want people without Google too |
+| `2`                 | **Sign in with Google**, or **Email me a sign-in code** | Level 0–2 is enough and you want people without Google too |
 
-**Why Google only is the default.** An emailed link proves the person can
-read that inbox. That is Level 2 (Contact Confirmed) and never more. If your
-site asks for Level 3 or 4 and the visitor signs in with an email link,
+**Codes, not links, by default.** Delegate emails a 6-digit code that the
+visitor types into the same sign-in page. The email has no links, so mail
+filters (Microsoft Defender in particular) are far less likely to quarantine
+it, and there is no second tab or browser to get lost in. A Domain that
+prefers a sign-in link sends `login_email=link` on the wire
+([protocol](./docs/protocol.md#email-codes-and-links-login_email)); this
+package does not have an option for it yet.
+
+**Why Google only is the default.** An emailed code or link proves the
+person can read that inbox. That is Level 2 (Contact Confirmed) and never
+more. If your site asks for Level 3 or 4 and the visitor signs in by email,
 delegate still cannot issue the Level you need, and the login ends in
 `level_unavailable`. Showing only trusted providers avoids that dead end.
 
@@ -654,9 +662,10 @@ On the wire this is `login_level=2` on `/identity/authorize` and
 Server-side sites using `@engine9/core` pass `loginLevel: 2` to
 `auth.identityUrl()`.
 
-## Sign-in providers: Google and Facebook
+## Sign-in providers: Google, Facebook, and Microsoft
 
-Delegate's sign-in screen offers Google by default. Ask for Facebook too:
+Delegate's sign-in screen offers Google by default. Ask for Facebook or
+Microsoft too:
 
 ```js
 const id = createEngine9Id({ loginProviders: ['google', 'facebook'] });
@@ -675,11 +684,20 @@ await id.requestIdentity({ minLevel: 1, loginProviders: ['google', 'facebook'] }
 - A Facebook sign-in counts as Level 3, like Google. Its email is not marked
   verified, and Facebook can return no email at all, so ask for `email` as
   optional if you can live without it.
-- The token's `auth.provider` is `google.com` or `facebook.com`. If your
-  server checks it, accept both.
+- Microsoft covers work and school accounts (Microsoft Entra ID) and
+  personal Microsoft accounts. It is the easiest way in for people at
+  organizations that run Microsoft 365, whose mail filters often quarantine
+  emailed sign-in links. It counts as Level 3; its email is not marked
+  verified either, because an organization's admin can set any address.
+- The token's `auth.provider` is `google.com`, `facebook.com`, or
+  `microsoft.com`. If your server checks it, accept every provider you ask
+  for.
 - One person is one User per email address. If a Facebook sign-in's email
   already belongs to a Google User, Delegate asks the person to continue with
-  Google once; after that both buttons reach the same User.
+  Google once; after that both buttons reach the same User. Microsoft
+  cannot be added to an existing User: if a Microsoft sign-in's email
+  already has one, Delegate asks the person to sign in the way they did
+  before.
 - One provider on a full-page login opens that provider by itself.
 
 On the wire this is `login_providers=google,facebook`

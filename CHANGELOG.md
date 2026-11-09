@@ -4,8 +4,46 @@ This file lists what changed in each release, what was retired, and what a
 site should change. The current way to do things is in [README.md](README.md).
 
 Only releases from the last week are listed. Pin the version you install
-(`@engine9/id@1.15.0`); a copy of `id.iife.js` you saved earlier is the
+(`@engine9/id@1.16.0`); a copy of `id.iife.js` you saved earlier is the
 version it was saved from.
+
+## 1.16.0: Microsoft sign-in, and email codes instead of links
+
+### `loginProviders: ['microsoft']`
+
+`LoginProvider` now includes `'microsoft'`: work and school accounts
+(Microsoft Entra ID) and personal Microsoft accounts. Ask for it like
+Facebook: `loginProviders: ['google', 'microsoft']`. Delegate shows the
+button only once its operator has enabled Microsoft.
+
+- A Microsoft sign-in counts as Level 3. Its email is **not** marked
+  verified (an Entra tenant admin can set any address), and it never joins
+  an existing User by email.
+- The token's `auth.provider` is `microsoft.com`. If your server checks it,
+  accept it too.
+- TypeScript code with an exhaustive `switch` over `LoginProvider` needs a
+  `'microsoft'` case.
+
+### `loginLevel: 2` emails a code
+
+Delegate's Level 2 screen now emails a 6-digit code that the visitor types
+into the same page, instead of a sign-in link. The email has no links, so
+mail filters (Microsoft Defender in particular) are far less likely to hold
+it. Nothing changes in this package, and the sign-in is still Level 2.
+
+- A Domain that wants the link sends `login_email=link` on the wire
+  ([protocol](docs/protocol.md#email-codes-and-links-login_email)). This
+  package has no option for it yet.
+- When a code cannot be used, Delegate says why (expired, used, asked for
+  in another browser, cookies blocked, and so on) and offers a link
+  instead. When the browser is not keeping Delegate's cookie, it sends a
+  link from the start.
+
+| Where | Find | Change to |
+| --- | --- | --- |
+| `package.json` | `"@engine9/id": "1.15.0"` | `"1.16.0"` |
+| A server that checks `auth.provider` | `google.com`, `facebook.com` | Also accept `microsoft.com`, if you ask for Microsoft |
+| Help text for Level 2 sign-in | "We'll email you a link" | "We'll email you a code" |
 
 ## 1.15.0: `core.session: 'cookie'` (recommended with a server), and `reason: 'access_denied'`
 

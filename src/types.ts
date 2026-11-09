@@ -34,7 +34,7 @@ export type LoginLevel = 2 | 3 | 4;
  * A sign-in provider Delegate can offer (`login_providers`). Google is the
  * default. Delegate only offers the ones its operator has enabled.
  */
-export type LoginProvider = 'google' | 'facebook';
+export type LoginProvider = 'google' | 'facebook' | 'microsoft';
 
 /** `login_providers`: names in the order the buttons appear, or a comma list. */
 export type LoginProviders = LoginProvider[] | string;

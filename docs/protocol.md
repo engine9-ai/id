@@ -202,8 +202,11 @@ Query:
   signed-out browser sees. `3` offers trusted providers only; `2` adds an
   email sign-in link. Ignored (treated as `3`) when `min_level` is 3 or more.
   See [Sign-in screen](#sign-in-screen-login_level).
+- `login_email` — `code` or `link` (default `code`). What the `login_level=2`
+  screen mails: a 6-digit code typed into the sign-in page, or a sign-in
+  link. See [Email codes and links](#email-codes-and-links-login_email).
 - `login_providers` — comma-separated provider names in button order, from
-  `google` and `facebook` (default `google`). Which provider buttons a
+  `google`, `facebook`, and `microsoft` (default `google`). Which provider buttons a
   signed-out browser sees. Delegate only offers providers its operator has
   enabled. See [Sign-in providers](#sign-in-providers-login_providers).
 - `brand_name`, `brand_color`, `brand_logo`, `brand_wordmark`,
@@ -211,9 +214,10 @@ Query:
   `brand_font`, `brand_google` — optional sign-in branding.
   See [Branding](#branding).
 - `login_hint` — optional email address of the person signing in, when the
-  Domain already knows it. Delegate passes it to Google as `login_hint` so
-  Google can skip its account chooser. It is ignored unless it looks like an
-  email address, ignored with Facebook, and never changes who is signed in.
+  Domain already knows it. Delegate passes it to Google and Microsoft as
+  `login_hint` so they can skip their account choosers. It is ignored unless
+  it looks like an email address, ignored with Facebook, and never changes
+  who is signed in.
   Without it Delegate uses the Google address this browser last signed in
   with (kept in Delegate's `localStorage`, cleared by Delegate's own Sign
   out).
@@ -292,10 +296,10 @@ Sign-in has five steps. Delegate owns 2–4. The Domain owns 1 and 5.
 1. **The Button** — the Domain's Login control (`@engine9/id` `loginWidget`,
    or a link to `/api/auth/start`). Signed in, it shows the role; signed out,
    it starts this flow.
-2. **Provider Selector** (`/login`) — Google, Facebook, email link. Skipped
+2. **Provider Selector** (`/login`) — Google, Facebook, Microsoft, email code or link. Skipped
    when there is exactly one provider, or the visitor is already signed in
    to Delegate.
-3. **The Provider** — Google, Facebook, or the emailed link. Skipped when
+3. **The Provider** — Google, Facebook, Microsoft, or the emailed code or link. Skipped when
    that provider already has a session (`login_hint` helps Google pick).
 4. **Share screen** (the consent page on `/identity/authorize`) — which
    fields, and which email, to send this Domain. The email may differ from
@@ -371,14 +375,14 @@ session, `/identity/authorize` and `/identity/bridge` redirect to
 
 | `login_level` | Screen | Sign-in methods | Highest Level that sign-in can reach |
 | --- | --- | --- | --- |
-| omitted, `3`, or `4` (default) | Trusted provider | Sign in with Google (and Facebook when asked, see [Sign-in providers](#sign-in-providers-login_providers)) | 4 (3, plus a second factor) |
-| `2` | Contact confirmation | The provider buttons, **or** "Email me a sign-in link" | 2 for the email link; 3–4 for a trusted provider |
+| omitted, `3`, or `4` (default) | Trusted provider | Sign in with Google (and Facebook or Microsoft when asked, see [Sign-in providers](#sign-in-providers-login_providers)) | 4 (3, plus a second factor) |
+| `2` | Contact confirmation | The provider buttons, **or** "Email me a sign-in code" ("Email me a sign-in link" with `login_email=link`) | 2 for the email code or link; 3–4 for a trusted provider |
 
-Why the default has no email link: a link in an inbox proves the person
-controls that address. That is Level 2 (Contact Confirmed), never Level 3.
-A site that needs Level 3 or 4 would accept the email-link sign-in and then
-still fail with `level_unavailable`. So the email link is offered only when
-the Domain asks for it.
+Why the default has no email sign-in: a code or link in an inbox proves the
+person controls that address. That is Level 2 (Contact Confirmed), never
+Level 3. A site that needs Level 3 or 4 would accept the email sign-in and
+then still fail with `level_unavailable`. So email sign-in is offered only
+when the Domain asks for it.
 
 Rules:
 
@@ -396,7 +400,53 @@ Rules:
 - Sites that link to `/login` directly (not through authorize) can add
   `login_level=2` themselves.
 
-Email links and other browsers:
+### Email codes and links (`login_email`)
+
+The Domain chooses with `login_email` on `/identity/authorize` or
+`/identity/bridge`, next to `login_level=2`. Delegate reads it from the
+request carried in `return_to`. Sites that link to `/login` directly can
+add `login_email=link` themselves. Anything other than `link` means `code`.
+
+Codes (the default):
+
+- Delegate mails a 6-digit code, branded for the Domain ("Your code to sign
+  in to {name}", from "{name} via Delegate"). The email has no links. Mail
+  filters, Microsoft Defender in particular, quarantine sign-in links from
+  senders they do not know; a code has nothing to click.
+- The person types the code into the same sign-in page; there is no second
+  tab or browser. The code works once, for 10 minutes, only in the browser
+  that asked for it, with 5 tries. Asking again replaces it. Codes and links
+  share the per-address and per-IP hourly limits.
+- The right code finishes as an ordinary email-link sign-in in Firebase
+  (`provider` `emailLink`, `amr` `otp`), so Levels, Users, and merging are
+  the same as for a link.
+- When Delegate cannot mail a code, the page sends a link instead: its mail
+  sender is not configured, or the browser is not keeping Delegate's `unid`
+  cookie (`reason: "cookie_missing"`), which a code is bound to.
+- A code Delegate cannot accept says why, and the page offers a sign-in link
+  instead (or a new code). Only the browser the code is bound to learns
+  that code's state; any other browser hears `no_code`, so the endpoint
+  cannot tell anyone whether an address has a code waiting.
+- Verify is rate limited per address and per IP, on top of the 5 tries.
+- Endpoints (Delegate's own pages only, same-origin): `POST /auth/email-code`
+  `{ email, continue, timeZone? }` → `{ sent: true }` or
+  `{ sent: false, reason }`;
+  `POST /auth/email-code/verify` `{ email, code }` →
+  `{ verified: true, link }` or `{ verified: false, reason }`:
+
+  | `reason` | Meaning |
+  | --- | --- |
+  | `wrong_code` | Not the code. Comes with `attemptsLeft`. |
+  | `replaced` | The code from an earlier email; asking again replaced it. Uses a try. Comes with `attemptsLeft`. |
+  | `malformed_code` | Not 6 digits. Does not use a try. |
+  | `rate_limited` | Too many tries for this address or from this IP in the last minute. Does not use a try. |
+  | `no_code` | No code waiting for this address in this browser: never asked, asked in another browser or private window, or over an hour ago. |
+  | `cookie_missing` | The request had no `unid` cookie, so no code can be bound to it. |
+  | `expired` | Older than 10 minutes. |
+  | `used` | Already signed in with it. |
+  | `too_many_tries` | 5 wrong tries. |
+
+Links (`login_email=link`), and links opened in other browsers:
 
 - Delegate mails the link itself, branded for the Domain ("Sign in to
   {name}", from "{name} via Delegate"). The link works once.
@@ -426,6 +476,7 @@ none of it: it is read from each request and carried to `/login` inside
 | --- | --- | --- |
 | `google` (default) | Sign in with Google | `google.com` |
 | `facebook` | Continue with Facebook | `facebook.com` |
+| `microsoft` | Sign in with Microsoft | `microsoft.com` |
 
 Rules:
 
@@ -443,11 +494,17 @@ Rules:
   selector is skipped). A popup still shows the button: a browser blocks a
   window opened without a click.
 - The Identity Token's `auth.provider` is the Firebase provider that signed
-  the person in (`google.com` or `facebook.com`). Sites that check it must
-  accept both when they ask for Facebook.
+  the person in (`google.com`, `facebook.com`, or `microsoft.com`). Sites
+  that check it must accept every provider they ask for.
 - Facebook may return no email, or one Facebook has not confirmed. Delegate
   does not mark a Facebook email verified. A Facebook sign-in can reach
   Level 3 (a trusted provider) while `fields.email_verified` is `false`.
+- Microsoft covers work and school accounts (Microsoft Entra ID) and
+  personal Microsoft accounts. Delegate does not mark a Microsoft email
+  verified either: an Entra tenant's admin can give an account any address.
+  A Microsoft sign-in can reach Level 3 while `fields.email_verified` is
+  `false`. A Domain that needs a confirmed address checks
+  `fields.email_verified`.
 
 One account per email: when a Facebook sign-in's address already belongs to
 a Google User, Firebase refuses the second account. `/login` keeps the
@@ -458,7 +515,13 @@ Facebook.", highlights the Google button, and passes the address to Google as
 Facebook to that User. A later Facebook sign-in then reaches the same User
 and the same `sub`. A failure to add Facebook never stops the sign-in.
 
-`@engine9/id`: `createEngine9Id({ loginProviders: ['google', 'facebook'] })`
+Microsoft cannot be added the same way: Firebase cannot sign in with a
+Microsoft credential after the fact. When a Microsoft sign-in's address
+already belongs to a User, `/login` says "<masked address> already has a
+Delegate account that signs in another way" and names the other methods on
+the screen. The person signs in that way; nothing is merged.
+
+`@engine9/id`: `createEngine9Id({ loginProviders: ['google', 'facebook', 'microsoft'] })`
 or `mount({ loginProviders: [...] })` for every login,
 `requestIdentity({ …, loginProviders })` for one request, or
 `data-e9-login-providers="google,facebook"` on a login button.
