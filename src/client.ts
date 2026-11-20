@@ -1,4 +1,4 @@
-import { createCoreClient } from './core';
+import { createCoreClient, CORE_MIN_LEVEL } from './core';
 import {
   DelegateIdentityError,
   delegateReturnedError,
@@ -148,6 +148,10 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
   // With a cookie session core issues the nonce, so the token can only finish
   // a sign-in this browser began with core (see CoreSessionMode).
   const serverNonce = Boolean(config.core && config.core.session === 'cookie');
+  // Core signs nobody in below Identity Level 2, so a client connected to
+  // core never asks Delegate for less (a lower request would be refused).
+  const levelFloor = (n: number | undefined): number | undefined =>
+    config.core ? Math.max(CORE_MIN_LEVEL, n ?? 0) : n;
 
   const beginRequest = async (): Promise<{ nonce: string; state: string }> => {
     const { nonce, state } =
@@ -190,6 +194,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
       throw err;
     }
     const { nonce, state } = begun;
+    const minLevel = levelFloor(opts.minLevel);
     const loginLevel = opts.loginLevel ?? config.loginLevel;
     const loginProviders = opts.loginProviders ?? config.loginProviders;
     const brand = opts.brand ?? config.brand;
@@ -200,7 +205,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
         brand,
         loginProviders,
         loginLevel,
-        minLevel: opts.minLevel,
+        minLevel,
         prompt: opts.prompt,
         fields: opts.fields,
         optionalFields: opts.optionalFields,
@@ -209,7 +214,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     log('request', {
       mode: opts.mode,
       domain,
-      minLevel: opts.minLevel,
+      minLevel,
       maxLevel: opts.maxLevel,
       prompt: opts.prompt,
       reason: opts.reason,
@@ -219,7 +224,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     });
     const shared = {
       domain,
-      minLevel: opts.minLevel,
+      minLevel,
       maxLevel: opts.maxLevel,
       fields: opts.fields,
       optionalFields: opts.optionalFields,
@@ -337,6 +342,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
     n: number,
     opts: EnsureLevelOptions = {},
   ): Promise<Identity | void> => {
+    n = levelFloor(n) as number;
     const current = getIdentity();
     if (meetsLevel(current, n)) return current ?? undefined;
     const mode = opts.mode ?? 'popup';
@@ -429,7 +435,7 @@ export function createEngine9Id(config: Engine9IdConfig = {}): Engine9Id {
   };
 
   const signIn = async (opts: SignInOptions = {}): Promise<Identity | void> => {
-    const minLevel = opts.minLevel ?? 1;
+    const minLevel = levelFloor(opts.minLevel ?? 1) as number;
     const current = getIdentity();
     if (meetsLevel(current, minLevel)) return current ?? undefined;
     return requestIdentity({

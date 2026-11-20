@@ -1,6 +1,6 @@
 export { createEngine9Id } from './client';
 export { mount, bindContent, gateFromElement, CONTENT_ATTRIBUTES } from './content';
-export { createCoreClient } from './core';
+export { createCoreClient, CORE_MIN_LEVEL } from './core';
 export { verifyIdentityToken, CLOCK_SKEW_SECONDS, decodeJwt } from './verify';
 export {
   LEVELS,
@@ -21,8 +21,10 @@ export {
 export { listenForDelegateIdentity, openIdentityPopup, openLogoutPopup } from './popup';
 export {
   DelegateIdentityError,
+  isLoginStop,
   isSiteKeyRejected,
   isStateMismatch,
+  LOGIN_STOPS,
   SITE_KEY_REJECTED,
   STATE_MISMATCH,
 } from './errors';

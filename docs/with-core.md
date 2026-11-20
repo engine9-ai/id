@@ -76,7 +76,7 @@ always has the current token; its Role section calls `changeRole`:
 
 ```html
 <span data-e9-login-widget></span>
-<div data-e9-min-level="1" hidden>Logged-in content (soft gate)</div>
+<div data-e9-min-level="2" hidden>Logged-in content (soft gate)</div>
 
 <script src="https://unpkg.com/@engine9/id@1/dist/id.iife.js"></script>
 <script>
@@ -86,7 +86,7 @@ always has the current token; its Role section calls `changeRole`:
   const VIP = '5f2ab45c-…'; // segment id (role_id === segment_id)
   const widget = engine9Id.loginWidget({
     id,
-    roles: [{ id: VIP, name: 'VIP', requiredAuth: { minLevel: 1 } }],
+    roles: [{ id: VIP, name: 'VIP', requiredAuth: { minLevel: 2 } }],
     async onLogin() {
       const { session } = await id.core.login();
       return { email: session.fields?.email, role: session.roles?.[0] ?? null, level: session.level };
@@ -112,11 +112,18 @@ roles whose `requiredAuth.minLevel` the visitor does not meet.
 email address. Delegate remembers which address a person shares with your
 Domain, so logging in again returns the same one. Switch email reopens the
 share page so they can pick another. The new token goes through `onLogin`,
-which calls `id.core.login()` again and re-reads roles. Core finds the
-person by the confirmed address, so picking another address signs in as the
-person core knows by that address: a different person unless core already
-joined the two ([core: who is signing in](https://github.com/engine9-ai/core/blob/main/auth/README.md#who-is-signing-in-credential-identity-deduplication)).
-The Domain UNID stays the same, but core does not use it to join people. On
+which calls `id.core.login()` again and re-reads roles. Core 1.22.0 and
+later decide who a sign-in is from the site's list of logins, Delegate
+account first, so another address in the same Delegate account stays the
+same person and becomes one of their logins
+([core: who is signing in](https://github.com/engine9-ai/core/blob/main/auth/README.md#who-is-signing-in-logins-people-deduplication)).
+Sign-in needs the login plugin (`@engine9/schemas/login`) in the site's
+database, which a site adds on purpose (no edition includes it). Without it, core refuses every
+sign-in (`sign_in_off`) and the Login button says so.
+When core refuses a sign-in (`login_reassigned`, `login_locked`), the
+Login button shows why, with **Sign in with a different address**. Keep
+that in the button: do not add a page or link of your own for it. With
+`session: 'cookie'` the button also offers **Add a sign-in address**. On
 an access-denied message, add
 `<button data-e9-change-delegate data-e9-reason="access_denied">` (or call
 `id.changeDelegateInfo({ reason: 'access_denied' })`) so the fix is one
@@ -137,10 +144,14 @@ no Domain configuration is needed when the pages and `/api` share a host.
 **Segment roles** live in core (`role_id === segment_id`). Example from the
 festival demo:
 
-- VIP: scopes `data:read`, `requiredAuth.minLevel = 1`
+- VIP: scopes `data:read`, `requiredAuth.minLevel = 2`
 - Admin: scopes `admin`, `requiredAuth.minLevel = 3`
 
 `requiredAuth.twoFactor` still applies on top of the Identity Level.
+
+Core signs nobody in below Level 2: it asks Delegate for at least Level 2
+whatever `minLevel` the client or widget passes, and refuses a lower token
+(`level_too_low`). Pass `minLevel: 2` or more to the widget on a core site.
 
 **Declared roles** in `@engine9/id` use the same `requiredAuth` shape for soft
 UI before `person_segment` exists. Graduate by setting `segment_id` + `scopes`

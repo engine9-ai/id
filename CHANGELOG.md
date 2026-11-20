@@ -4,8 +4,58 @@ This file lists what changed in each release, what was retired, and what a
 site should change. The current way to do things is in [README.md](README.md).
 
 Only releases from the last week are listed. Pin the version you install
-(`@engine9/id@1.16.0`); a copy of `id.iife.js` you saved earlier is the
+(`@engine9/id@1.17.0`); a copy of `id.iife.js` you saved earlier is the
 version it was saved from.
+
+## 1.17.0: the Login button shows why a site refused a sign-in
+
+For sites on `@engine9/core` 1.22.0, which decides who a sign-in is from its
+list of logins. Nothing changes for a site that does not use core.
+
+### Level 2 or more with core
+
+Core 1.22.0 signs nobody in below Identity Level 2. A client with `core`
+set now asks Delegate for at least Level 2 in every request
+(`requestIdentity`, `signIn`, `ensureLevel`, `data-e9-login`), so a lower
+`minLevel` no longer ends in a refused sign-in. New export:
+`CORE_MIN_LEVEL`. Without `core`, levels are unchanged.
+
+### The stop dialog
+
+When `onLogin` throws one of the new `LOGIN_STOPS`, the Login button stays
+signed out and opens its dialog with the reason and the choices:
+
+| `code` | The dialog says | Choices |
+| --- | --- | --- |
+| `login_reassigned` | This address signs in here through a different Delegate account. Ask the site's administrator | **Sign in with a different address** (Delegate's share screen, with an emailed code) |
+| `login_locked` | This sign-in is turned off. Ask the site's administrator | Sign in with a different address |
+| `sign_in_off` | This site does not have sign-in yet. If you run it, add the login plugin (`npx e9core upgrade --plugin @engine9/schemas/login`) | None: the site's database has no `@engine9/schemas/login` |
+
+The labels are `loginReassigned`, `loginLocked`, `signInOff`, and
+`differentAddress`.
+These choices belong to the Login button only: a site adds no link or page
+of its own for them.
+
+### Add a sign-in address
+
+With core's cookie session, the signed-in dialog has **Add a sign-in
+address** (a second Delegate account, then `core.addAddress()`), and then
+**Stop signing in with** the old address (`core.retireAddress()`). Labels:
+`addAddress`, `stopUsing`.
+
+### API
+
+| Added | |
+| --- | --- |
+| `LOGIN_STOPS`, `isLoginStop(error)` | Exported (also on `window.engine9Id`). A stop is a `DelegateIdentityError` whose `code` is the reason; `details` has `status` and `reason` |
+| `core.addAddress()`, `core.retireAddress(email)` | `POST /auth/add-address` and `POST /auth/retire-address` |
+| `core.session` | `'cookie'` or `'token'` |
+
+| What a site changes | |
+| --- | --- |
+| A site using core's `/api/auth/login.js` | Nothing: it loads `@engine9/id@1` |
+| A site that pins `@engine9/id` | `1.17.0`, with `@engine9/core` 1.22.0 |
+| An `onLogin` of your own that catches core's errors | Let `isLoginStop` errors through, so the dialog can show them |
 
 ## 1.16.0: Microsoft sign-in, and email codes instead of links
 

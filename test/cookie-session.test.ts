@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createEngine9Id } from '../src/client';
 import { createCoreClient } from '../src/core';
+import { isLoginStop } from '../src/errors';
 import { createDelegateProvider } from '../src/provider';
 import { createTestKeys, DOMAIN, ISSUER, mockDelegateFetch, postMessage, signIdentityToken } from './helpers';
 
@@ -120,6 +121,7 @@ describe("popup sign-in with session: 'cookie'", () => {
     expect(bridge.pathname).toBe('/identity/bridge');
     expect(bridge.searchParams.get('nonce')).toBe('core-nonce');
     expect(bridge.searchParams.get('state')).toBe('core-state');
+    expect(bridge.searchParams.get('min_level')).toBe('2'); // core signs nobody in below Level 2
     expect(order.slice(0, 2)).toEqual(['window.open', '/api/auth/begin']);
 
     const token = await signIdentityToken(keys, { level: 3, nonce: 'core-nonce' });
@@ -166,7 +168,7 @@ describe("popup sign-in with session: 'cookie'", () => {
     await make().requestIdentity({ minLevel: 1, mode: 'redirect' });
     expect(open).not.toHaveBeenCalled();
     expect(buildAuthorizeUrl).toHaveBeenCalledWith(
-      expect.objectContaining({ nonce: 'redirect-nonce', state: 'redirect-state' }),
+      expect.objectContaining({ nonce: 'redirect-nonce', state: 'redirect-state', minLevel: 2 }),
     );
 
     // Back from Delegate on a fresh page.
@@ -207,5 +209,57 @@ describe("popup sign-in with session: 'cookie'", () => {
     });
     await id.logout();
     expect(urls).toEqual(['/api/auth/logout']);
+  });
+});
+
+describe('core client: sign-in stops (core 1.22.0)', () => {
+  it('turns each 403 stop into an error coded with the reason', async () => {
+    for (const reason of ['login_reassigned', 'login_locked', 'sign_in_off']) {
+      const bodies: unknown[] = [];
+      const fetchImpl = vi.fn(async (input: string | URL, init?: RequestInit) => {
+        bodies.push(init?.body ? JSON.parse(String(init.body)) : undefined);
+        if (String(input).endsWith('/auth/login')) return json({ error: 'refused', reason }, 403);
+        return json({});
+      });
+      let state: string | null = 'S2';
+      const core = createCoreClient({
+        apiUrl: '/api',
+        publicApiKey: 'e9publickey_test',
+        session: 'cookie',
+        getDelegateToken: () => 'jwt-casey',
+        getLoginState: () => state,
+        clearLoginState: () => {
+          state = null;
+        },
+        fetchImpl,
+      });
+      expect(core.session).toBe('cookie');
+      const err = await core.login().catch((e) => e);
+      expect(isLoginStop(err)).toBe(true);
+      expect(err.code).toBe(reason);
+      expect(err.details).toEqual({ status: 403, reason });
+      expect(bodies).toEqual([{ delegate_token: 'jwt-casey', state: 'S2', cookie: true }]);
+      expect(state).toBeNull();
+    }
+  });
+
+  it('adds a sign-in address with the new token and its state', async () => {
+    const seen: { url: string; body?: unknown }[] = [];
+    const fetchImpl = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      seen.push({ url: String(input), body: init?.body ? JSON.parse(String(init.body)) : undefined });
+      return json({ ok: true, person_id: 7 });
+    });
+    const core = createCoreClient({
+      apiUrl: '/api',
+      publicApiKey: 'e9publickey_test',
+      session: 'cookie',
+      getDelegateToken: () => 'jwt-new',
+      getLoginState: () => 'S3',
+      fetchImpl,
+    });
+    await expect(core.addAddress()).resolves.toEqual({ ok: true, person_id: 7 });
+    expect(seen[0]).toEqual({ url: '/api/auth/add-address', body: { delegate_token: 'jwt-new', state: 'S3' } });
+    await core.retireAddress('old@example.com');
+    expect(seen[1]).toEqual({ url: '/api/auth/retire-address', body: { email: 'old@example.com' } });
   });
 });

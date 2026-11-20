@@ -34,6 +34,25 @@ export function isStateMismatch(error: unknown): boolean {
  */
 export const SITE_KEY_REJECTED = 'site_key_rejected';
 
+/**
+ * The answers that stop a sign-in on a Site with @engine9/core 1.22.0
+ * or later. Each is a DelegateIdentityError whose `code` is the reason.
+ *
+ * - `login_reassigned`: the address now signs in through a different Delegate
+ *   account; the Site's administrator decides.
+ * - `login_locked`: an administrator turned this sign-in off.
+ * - `sign_in_off`: the Site has no sign-in (its database has no
+ *   @engine9/schemas/login plugin). Only the Site's owner can fix it.
+ *
+ * The Login button (`loginWidget`) shows each one and its choices.
+ */
+export const LOGIN_STOPS = ['login_reassigned', 'login_locked', 'sign_in_off'] as const;
+
+/** True for one of the LOGIN_STOPS. */
+export function isLoginStop(error: unknown): error is DelegateIdentityError {
+  return error instanceof DelegateIdentityError && (LOGIN_STOPS as readonly string[]).includes(error.code);
+}
+
 /** True for a `site_key_rejected` error (see `SITE_KEY_REJECTED`). */
 export function isSiteKeyRejected(error: unknown): boolean {
   return error instanceof DelegateIdentityError && error.code === SITE_KEY_REJECTED;

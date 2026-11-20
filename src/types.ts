@@ -404,9 +404,23 @@ export interface CoreLoginResult {
 }
 
 export interface CoreClient {
+  /** How the Core Session is kept: core's HttpOnly cookie, or a token in this page's storage. */
+  readonly session: 'cookie' | 'token';
   /** `session: 'cookie'` only: `POST /auth/begin`, a state and nonce core bound to this browser. Login calls it for you. */
   begin(): Promise<{ state: string; nonce: string }>;
+  /**
+   * Exchange the Identity Token for a Core Session. A sign-in core stops
+   * throws `login_reassigned`, `login_locked`, or `sign_in_off` (`isLoginStop`).
+   */
   login(): Promise<CoreLoginResult>;
+  /**
+   * `session: 'cookie'` only: the Identity Token just obtained (a second
+   * Delegate account) becomes another sign-in of the signed-in person
+   * (`POST /auth/add-address`).
+   */
+  addAddress(): Promise<{ ok: true; person_id?: number }>;
+  /** Stop signing in with one of the signed-in person's own addresses (`POST /auth/retire-address`). */
+  retireAddress(email: string): Promise<void>;
   me(): Promise<CoreSession>;
   changeRole(roleId: string): Promise<CoreLoginResult>;
   /** `POST /auth/logout`: ends the Core Session (and clears the cookie). `logout()` calls it with `session: 'cookie'`. */

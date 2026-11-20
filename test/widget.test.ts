@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { Engine9Id, Identity } from '../src/types';
 import { loginWidget, type LoginWidget } from '../src/widget';
+import { DelegateIdentityError } from '../src/errors';
 
 function identity(overrides: Partial<Identity> = {}): Identity {
   return {
@@ -320,5 +321,102 @@ describe('loginWidget', () => {
   it('escapes values from the identity', () => {
     widget = loginWidget({ id: fakeId(identity({ fields: { email: '<img src=x>' } })) });
     expect(parts(widget).trigger.innerHTML).toContain('&lt;img src=x&gt;');
+  });
+});
+
+describe('loginWidget: sign-in stops (core 1.22.0)', () => {
+  const stop = (code: string, details: Record<string, unknown> = {}) =>
+    new DelegateIdentityError(code, code, { status: 403, reason: code, ...details });
+
+  /** A client on core's cookie session whose login is refused once with `refusal`. */
+  function coreId(refusal: DelegateIdentityError) {
+    const id = fakeId();
+    const core = {
+      session: 'cookie' as const,
+      addAddress: vi.fn(async () => ({ ok: true as const })),
+      retireAddress: vi.fn(async () => undefined),
+    };
+    Object.assign(id, { core });
+    let refused = false;
+    const onLogin = vi.fn(async () => {
+      if (!refused) {
+        refused = true;
+        throw refusal;
+      }
+      return { email: 'robin@home.example', level: 3 };
+    });
+    return { id, core, onLogin };
+  }
+
+  it('Sign in with a different address opens the share screen with an emailed code', async () => {
+    const { id, onLogin } = coreId(stop('login_reassigned'));
+    widget = loginWidget({ id, mode: 'popup', onLogin });
+    const p = parts(widget);
+    p.trigger.click();
+    p.action('login')!.click();
+    await settle();
+    p.action('different-address')!.click();
+    await settle();
+    expect(id.changeDelegateInfo).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: 'popup', reason: 'access_denied', loginLevel: 2 }),
+    );
+    expect(onLogin).toHaveBeenCalledTimes(2);
+    expect(p.dialog.hasAttribute('open')).toBe(false);
+  });
+
+  it('login_locked and login_reassigned say to ask the administrator, signed out, with a different address offered', async () => {
+    for (const [code, text] of [
+      ['login_locked', 'This sign-in is turned off'],
+      ['login_reassigned', 'through a different Delegate account'],
+    ]) {
+      const { id, onLogin } = coreId(stop(code));
+      widget = loginWidget({ id, mode: 'popup', onLogin });
+      const p = parts(widget);
+      p.trigger.click();
+      p.action('login')!.click();
+      await settle();
+      expect(p.dialog.hasAttribute('open')).toBe(true);
+      expect(p.dialog.textContent).toContain(text);
+      expect(p.action('different-address')?.textContent).toBe('Sign in with a different address');
+      expect(p.trigger.textContent).toBe('Login');
+      widget.destroy();
+      widget = undefined;
+    }
+  });
+
+  it('sign_in_off says the site has no sign-in, with no other choice', async () => {
+    const { id, onLogin } = coreId(stop('sign_in_off'));
+    widget = loginWidget({ id, mode: 'popup', onLogin });
+    const p = parts(widget);
+    p.trigger.click();
+    p.action('login')!.click();
+    await settle();
+    expect(p.dialog.textContent).toContain('This site does not have sign-in yet');
+    expect(p.dialog.textContent).toContain('@engine9/schemas/login');
+    expect(p.action('different-address')).toBeNull();
+  });
+
+  it('Add a sign-in address, then offer to stop using the old one', async () => {
+    const { id, core } = coreId(stop('login_locked'));
+    widget = loginWidget({ id, user: { email: 'pat@old.example', level: 3 } });
+    const p = parts(widget);
+    p.trigger.click();
+    p.action('add-address')!.click();
+    await settle();
+    expect(id.changeDelegateInfo).toHaveBeenCalledWith(expect.objectContaining({ mode: 'popup' }));
+    expect(core.addAddress).toHaveBeenCalledTimes(1);
+    expect(p.dialog.textContent).toContain('work@example.com now signs you in too.');
+    expect(p.action('retire-address')?.textContent).toBe('Stop signing in with pat@old.example');
+    p.action('retire-address')!.click();
+    await settle();
+    expect(core.retireAddress).toHaveBeenCalledWith('pat@old.example');
+    expect(p.action('retire-address')).toBeNull();
+  });
+
+  it('offers no address section without core\'s cookie session', () => {
+    widget = loginWidget({ id: fakeId(identity()) });
+    const p = parts(widget);
+    p.trigger.click();
+    expect(p.action('add-address')).toBeNull();
   });
 });

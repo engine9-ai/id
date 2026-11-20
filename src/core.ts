@@ -1,4 +1,4 @@
-import { DelegateIdentityError, SITE_KEY_REJECTED } from './errors';
+import { DelegateIdentityError, LOGIN_STOPS, SITE_KEY_REJECTED } from './errors';
 import type {
   CoreClient,
   CoreConfig,
@@ -53,6 +53,9 @@ function coreError(
   const details: Record<string, unknown> = { status: res.status };
   if (reason) details.reason = reason;
   if (hint) details.hint = hint;
+  if (reason && (LOGIN_STOPS as readonly string[]).includes(reason)) {
+    return new DelegateIdentityError(reason, text || reason, details);
+  }
   if (rec.kind === 'api_key' || legacy) {
     return new DelegateIdentityError(
       SITE_KEY_REJECTED,
@@ -106,6 +109,9 @@ function applyCoreHeaders(
   if (sessionToken) headers.set('X-Engine9-Session', sessionToken);
 }
 
+/** The lowest Identity Level @engine9/core signs anyone in at. A client connected to core asks for no less. */
+export const CORE_MIN_LEVEL = 2;
+
 /**
  * Browser helper for a Site that embeds `@engine9/core`.
  * Sends the public API key on every call (`Authorization` and `X-API-Key`).
@@ -148,6 +154,8 @@ export function createCoreClient(opts: CreateCoreClientOptions): CoreClient {
   };
 
   return {
+    session: cookie ? 'cookie' : 'token',
+
     async begin(): Promise<{ state: string; nonce: string }> {
       const res = await request('/auth/begin', { method: 'POST', body: '{}' });
       const body = await asJson(res);
@@ -191,6 +199,27 @@ export function createCoreClient(opts: CreateCoreClientOptions): CoreClient {
       const result = loginResult(body, undefined, cookie);
       opts.setSessionToken?.(result.token ?? null);
       return result;
+    },
+
+    async addAddress(): Promise<{ ok: true; person_id?: number }> {
+      const delegateToken = opts.getDelegateToken();
+      if (!delegateToken) {
+        throw new DelegateIdentityError('login_required', 'No Identity Token for the new address. Sign in to it first.');
+      }
+      const state = opts.getLoginState?.() ?? undefined;
+      opts.clearLoginState?.();
+      const res = await request('/auth/add-address', {
+        method: 'POST',
+        body: JSON.stringify({ delegate_token: delegateToken, state }),
+      });
+      const body = await asJson(res);
+      if (!res.ok) throw fail(res, body, 'access_denied', `core could not add the address (${res.status})`);
+      return body as { ok: true; person_id?: number };
+    },
+
+    async retireAddress(email: string): Promise<void> {
+      const res = await request('/auth/retire-address', { method: 'POST', body: JSON.stringify({ email }) });
+      if (!res.ok) throw fail(res, await asJson(res), 'access_denied', `core could not stop that address (${res.status})`);
     },
 
     async logout(): Promise<void> {

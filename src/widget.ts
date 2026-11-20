@@ -9,10 +9,16 @@
  *
  * It reuses `requestIdentity`, `changeDelegateInfo`, and `logout`. Roles are
  * the site's: the widget lists them and calls `onRoleChange`.
+ *
+ * When the site refuses a sign-in (`onLogin` throws one of LOGIN_STOPS, as
+ * @engine9/core 1.22.0 does), the dialog shows why and the choices: Sign in
+ * with a different address. With core's cookie session it also offers Add a
+ * sign-in address. These live only
+ * here: a site adds no link or page of its own for them.
  */
 
 import { createEngine9Id } from './client';
-import { DelegateIdentityError, insecureDomainMessage, isSiteKeyRejected, isStateMismatch } from './errors';
+import { DelegateIdentityError, insecureDomainMessage, isLoginStop, isSiteKeyRejected, isStateMismatch } from './errors';
 import { describeLevel } from './levels';
 import { meetsRequiredAuth, type DeclaredRoleRegistry, type RequiredAuth } from './roles';
 import type { Engine9Id, Engine9IdConfig, Identity, IdentityMode } from './types';
@@ -64,6 +70,13 @@ export interface LoginWidgetLabels {
   chooseRole: string;
   logout: string;
   logoutDelegate: string;
+  loginReassigned: string;
+  loginLocked: string;
+  signInOff: string;
+  differentAddress: string;
+  addAddress: string;
+  /** `{email}` is replaced. */
+  stopUsing: string;
 }
 
 export interface LoginWidgetContext {
@@ -170,6 +183,12 @@ const DEFAULT_LABELS: LoginWidgetLabels = {
   chooseRole: 'Choose a role',
   logout: 'Log out',
   logoutDelegate: 'Also sign out of Delegate in this browser',
+  loginReassigned: "This address signs in to an account here through a different Delegate account. Ask the site's administrator.",
+  loginLocked: "This sign-in is turned off. Ask the site's administrator.",
+  signInOff: "This site does not have sign-in yet. If you run it, add the login plugin: npx e9core upgrade --plugin @engine9/schemas/login",
+  differentAddress: 'Sign in with a different address',
+  addAddress: 'Add a sign-in address',
+  stopUsing: 'Stop signing in with {email}',
 };
 
 const FIELD_NAMES: Record<string, string> = {
@@ -390,13 +409,22 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
     busy: string | null;
     status: { text: string; kind: 'ok' | 'err' } | null;
     logoutDelegate: boolean;
+    /** A sign-in the site refused, and what the dialog offers for it. */
+    stop: { code: string } | null;
+    /** After Add a sign-in address: the old address the person may stop using. */
+    retireOffer: string | null;
   } = {
     user: options.user,
     role: options.role ?? options.user?.role ?? null,
     busy: returning ? labels.loggingIn : null,
     status: null,
     logoutDelegate: options.logoutDelegate === true,
+    stop: null,
+    retireOffer: null,
   };
+
+  // Core's cookie session: the dialog can add a sign-in address itself.
+  const coreCookie = id.core?.session === 'cookie';
 
   const host = document.createElement('span');
   host.className = 'e9-login-widget';
@@ -485,6 +513,34 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
     );
   };
 
+  const stopBody = (): string => {
+    const stop = state.stop;
+    if (!stop) return '';
+    let text: string;
+    if (stop.code === 'login_reassigned') text = labels.loginReassigned;
+    else if (stop.code === 'sign_in_off') text = labels.signInOff;
+    else text = labels.loginLocked;
+    // No sign-in on the site: another address would stop the same way.
+    if (stop.code === 'sign_in_off') return `<p class="refused" role="alert">${esc(text)}</p>`;
+    return (
+      `<p class="refused" role="alert">${esc(text)}</p>` +
+      `<button class="btn primary" type="button" data-action="different-address">${esc(labels.differentAddress)}</button>`
+    );
+  };
+
+  const addressSection = (): string => {
+    if (!coreCookie) return '';
+    return (
+      `<section><h3>Sign-in addresses</h3>` +
+      `<button class="btn" type="button" data-action="add-address">${esc(labels.addAddress)}</button>` +
+      `<p class="fine">Sign in to another email or Delegate account; both sign you in here after that.</p>` +
+      (state.retireOffer
+        ? `<button class="btn" type="button" data-action="retire-address">${esc(labels.stopUsing.replace(/\{email\}/g, state.retireOffer))}</button>`
+        : '') +
+      `</section>`
+    );
+  };
+
   const rolesSection = (v: View): string => {
     if (!roles.length) return '';
     const items = roles
@@ -524,6 +580,7 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
       `<section><h3>Email</h3>` +
       `<button class="btn" type="button" data-action="switch-email">${esc(labels.switchEmail)}</button>` +
       `<p class="fine">Pick another address, add one, or use a different Google account.</p></section>` +
+      addressSection() +
       rolesSection(v) +
       `<section>` +
       (ask
@@ -546,7 +603,7 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
     dialog.innerHTML =
       `<div class="top">${top}<button class="x" type="button" data-action="close" aria-label="Close">×</button></div>` +
       `<h2 id="e9-title">${esc(title)}</h2>` +
-      (v.signedIn ? signedInBody(v) : signedOutBody()) +
+      (state.stop ? stopBody() : v.signedIn ? signedInBody(v) : signedOutBody()) +
       `<p class="status${state.status?.kind === 'err' ? ' err' : ''}" role="status">${esc(state.busy ?? state.status?.text ?? '')}</p>` +
       foot;
     if (state.busy) {
@@ -583,6 +640,11 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
     }
     return pending
       .catch((error: unknown) => {
+        if (isLoginStop(error)) {
+          applyStop(error);
+          open();
+          return;
+        }
         state.status = { text: describeError(error), kind: 'err' };
         onError(error);
       })
@@ -590,6 +652,14 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
         state.busy = null;
         render();
       });
+  };
+
+  /* The site refused the sign-in: nobody is signed in, and the dialog says why. */
+  const applyStop = (error: DelegateIdentityError): void => {
+    state.stop = { code: error.code };
+    state.user = null;
+    state.role = null;
+    state.status = null;
   };
 
   const afterIdentity = async (identity: Identity): Promise<void> => {
@@ -623,6 +693,43 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
       const email = view().email;
       state.status = { text: email ? `${siteName} now sees ${email}.` : 'Updated.', kind: 'ok' };
     });
+
+  /* From a stop: Delegate's share screen, with an emailed code, to pick or add the right address. */
+  const differentAddress = (): Promise<void> =>
+    run('Waiting for Delegate…', async () => {
+      state.stop = null;
+      const identity = await id.changeDelegateInfo({
+        ...request,
+        mode: 'popup',
+        reason: 'access_denied',
+        loginLevel: request.loginLevel ?? 2,
+      });
+      if (!identity) return;
+      await afterIdentity(identity);
+      if (!roles.length || state.role) close();
+    });
+
+  /* Add a sign-in address: a second Delegate account proves itself while this session stays. */
+  const addAddress = (): Promise<void> =>
+    run('Waiting for Delegate…', async () => {
+      const old = view().email;
+      const identity = await id.changeDelegateInfo({ ...request, mode: 'popup' });
+      if (!identity) return;
+      await id.core!.addAddress();
+      const added = identity.fields?.email ?? null;
+      state.retireOffer = old && added && old.toLowerCase() !== added.toLowerCase() ? old : null;
+      state.status = { text: added ? `${added} now signs you in too.` : 'Added.', kind: 'ok' };
+    });
+
+  const retireAddress = (): Promise<void> => {
+    const email = state.retireOffer;
+    if (!email) return Promise.resolve();
+    return run('Saving…', async () => {
+      await id.core!.retireAddress(email);
+      state.retireOffer = null;
+      state.status = { text: `${email} no longer signs you in.`, kind: 'ok' };
+    });
+  };
 
   const changeRole = (roleId: string): Promise<void> => {
     if (roleId === state.role) return Promise.resolve();
@@ -672,6 +779,7 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
     if (typeof dialog.close === 'function') dialog.close();
     else dialog.removeAttribute('open');
     state.status = null;
+    state.stop = null;
   }
 
   const onDialogClick = (event: MouseEvent): void => {
@@ -702,6 +810,15 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
         break;
       case 'logout':
         void logout();
+        break;
+      case 'different-address':
+        void differentAddress();
+        break;
+      case 'add-address':
+        void addAddress();
+        break;
+      case 'retire-address':
+        void retireAddress();
         break;
     }
   };
@@ -745,6 +862,12 @@ export function loginWidget(options: LoginWidgetOptions = {}): LoginWidget {
       if (identity && roles.length && !state.role && view().signedIn) open();
     })
     .catch((error: unknown) => {
+      // The site refused this sign-in: say why, with the choices.
+      if (isLoginStop(error)) {
+        applyStop(error);
+        open();
+        return;
+      }
       // Not a failure: the button stays on Login and the next login starts over.
       if (!isStateMismatch(error)) onError(error);
     })

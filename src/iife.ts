@@ -1,6 +1,6 @@
 import { createEngine9Id } from './client';
 import { mount, bindContent, gateFromElement, CONTENT_ATTRIBUTES } from './content';
-import { isSiteKeyRejected, isStateMismatch, SITE_KEY_REJECTED, STATE_MISMATCH } from './errors';
+import { isLoginStop, isSiteKeyRejected, isStateMismatch, LOGIN_STOPS, SITE_KEY_REJECTED, STATE_MISMATCH } from './errors';
 import {
   EMAIL_TYPES,
   PHONE_TYPES,
@@ -51,8 +51,10 @@ const engine9Id = {
   normalizePersonPayload,
   identityFieldsFromPersonPayload,
   createPersonForm,
+  isLoginStop,
   isSiteKeyRejected,
   isStateMismatch,
+  LOGIN_STOPS,
   SITE_KEY_REJECTED,
   STATE_MISMATCH,
   skipDowngrades,
