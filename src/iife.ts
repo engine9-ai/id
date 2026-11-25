@@ -26,10 +26,15 @@ import {
 import { skipDowngrades } from './skip';
 import { verifyIdentityToken } from './verify';
 import { loginWidget } from './widget';
+import { connectMcp, isMcpSignedOut } from './mcp';
+import { mcpButton } from './mcpButton';
 
 const engine9Id = {
   mount,
   loginWidget,
+  connectMcp,
+  mcpButton,
+  isMcpSignedOut,
   bindContent,
   gateFromElement,
   CONTENT_ATTRIBUTES,

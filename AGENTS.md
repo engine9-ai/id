@@ -31,6 +31,12 @@ Use **User**, **Domain**, **Grant**, **UNID**, **Domain UNID**,
 **Identity Level**, **Identity Token**, **Core Session**. Never “Account” or “Audience” in docs or
 APIs. The JWT claim remains `aud`.
 
+One exception: `@engine9/id/mcp` (`src/mcp.ts`, `src/mcpButton.ts`,
+`docs/mcp.md`) says **account** for an engine9 account (an `account_id` on an
+MCP server, the thing tool calls act on). That is never a Delegate User. In
+engine9 the account is the role: the connect button shows it where the login
+widget shows a role.
+
 ## Layout
 
 - `src/index.ts` — public ESM API (`createEngine9Id` and re-exports)
@@ -41,6 +47,11 @@ APIs. The JWT claim remains `aud`.
 - `src/forms.ts` — `@engine9/id/forms` (schema person field helpers)
 - `src/widget.ts` — `@engine9/id/widget`: `loginWidget()`, one Login
  button + dialog (log in, switch email, change role, log out)
+- `src/mcp.ts`, `src/mcpButton.ts`, `src/mcpEntry.ts` — `@engine9/id/mcp`:
+  `connectMcp()` (OAuth code + PKCE against an engine9 MCP server, tokens per
+  server, tool calls) and `mcpButton()` (server, sign in, account, sign out).
+  Guide and wire protocol: `docs/mcp.md`; keep it in sync with the server's
+  `/oauth/*` and `/mcp`
 - `src/provider.ts` — pluggable IdentityProvider (Delegate default)
 - `src/core.ts` — `@engine9/id/core`
 - `src/verify.ts` — WebCrypto ES256 + claim checks

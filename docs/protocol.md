@@ -47,8 +47,9 @@ product language in docs and APIs (except the JWT claim `aud`, which is RFC 7519
   authentication.
 - **Role** — Core authorization (`role_id === segment_id`). Not an identity
   concept. Roles may require `minLevel` and/or `twoFactor`.
-- **Session Bridge** — HMAC carrier of Firebase tokens to engine9 API hosts
-  (MCP). Used by conductor-ui. Not this protocol.
+- **Session Bridge** — Retired. engine9 API hosts no longer accept it;
+  Conductor and other apps sign in to an API host with OAuth authorization
+  code + PKCE ([mcp.md](./mcp.md)). Not this protocol.
 
 ## Discovery
 

@@ -1,6 +1,6 @@
 {
   "name": "@engine9/id",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "publishConfig": {
     "access": "public"
   },
@@ -51,6 +51,11 @@
       "types": "./dist/widget.d.ts",
       "import": "./dist/widget.js",
       "default": "./dist/widget.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "import": "./dist/mcp.js",
+      "default": "./dist/mcp.js"
     }
   },
   "files": [

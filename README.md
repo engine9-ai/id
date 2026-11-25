@@ -839,6 +839,25 @@ try {
   `@engine9/core`'s `/api/auth/callback` and `finishLogin` do this; use
   them rather than writing a callback.
 
+## Connect to an engine9 server (MCP)
+
+A page that shows or changes engine9 data (reports, flows, people) signs the
+person in to an engine9 **MCP server** instead of to your own site.
+`@engine9/id/mcp` gives you one **Connect to engine9** button: pick a server,
+sign in (Delegate, then a consent screen naming your site), pick an account,
+and call the server's tools as that person. No server code and nothing to
+register.
+
+```js
+import { connectMcp, mcpButton } from '@engine9/id/mcp';
+
+const mcp = connectMcp({ servers: ['https://data.engine9.ai/mcp'] });
+mcpButton({ mcp, onAccountChange: async () => render(await mcp.call('report', { command: 'list' })) });
+```
+
+The full guide, including the wire protocol for clients written without this
+library: [docs/mcp.md](./docs/mcp.md).
+
 ## Going further
 
 ### Custom layout with the lower-level client
@@ -912,6 +931,7 @@ Package exports:
 - `@engine9/id/roles` — declared roles: `meetsRequiredAuth`, `evaluateDeclaredRole`, `visibleContent`
 - `@engine9/id/forms` — `createPersonForm`, `normalizePersonPayload`, `EMAIL_TYPES`
 - `@engine9/id/core` — `createCoreClient`
+- `@engine9/id/mcp` — `connectMcp`, `mcpButton`, `isMcpSignedOut`: sign in to an engine9 MCP server and call its tools ([docs/mcp.md](./docs/mcp.md))
 
 The script tag build exposes the same functions on `window.engine9Id`.
 

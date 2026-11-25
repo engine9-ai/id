@@ -9,6 +9,7 @@ export default defineConfig({
     roles: 'src/roles.ts',
     forms: 'src/forms.ts',
     widget: 'src/widget.ts',
+    mcp: 'src/mcpEntry.ts',
   },
   format: ['esm'],
   dts: true,

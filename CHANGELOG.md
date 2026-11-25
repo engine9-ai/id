@@ -4,8 +4,25 @@ This file lists what changed in each release, what was retired, and what a
 site should change. The current way to do things is in [README.md](README.md).
 
 Only releases from the last week are listed. Pin the version you install
-(`@engine9/id@1.17.0`); a copy of `id.iife.js` you saved earlier is the
+(`@engine9/id@1.18.0`); a copy of `id.iife.js` you saved earlier is the
 version it was saved from.
+
+## 1.18.0: connect a page to an engine9 MCP server
+
+New entry `@engine9/id/mcp`, also on `window.engine9Id`:
+
+- `connectMcp({ servers })` signs a person in to one or more engine9 MCP
+  servers (OAuth authorization code + PKCE against the server, which sends
+  them through Delegate and a consent screen naming your site), lists the
+  accounts they may open, and calls MCP tools as them.
+- `mcpButton({ mcp })` is one **Connect to engine9** button: server, sign in,
+  account (shown like the login widget's role), sign out.
+
+Nothing to register and no server code. Guide and wire protocol:
+[docs/mcp.md](docs/mcp.md). Needs an engine9 server with third-party sign-in
+(any https origin, consent screen, bearer-only CORS).
+
+Nothing changes for sites that do not import it.
 
 ## 1.17.0: the Login button shows why a site refused a sign-in
 
